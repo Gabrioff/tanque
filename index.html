@@ -5,11 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Tanques Multijugador</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
             overflow: hidden;
             background-color: #1a202c; /* bg-gray-900 */
+        }
+        .game-title {
+            font-family: 'Bungee', cursive;
         }
         canvas {
             background-color: #2d3748; /* bg-gray-800 */
@@ -28,7 +36,8 @@
             pointer-events: auto;
         }
         #join-screen {
-            background-color: rgba(0, 0, 0, 0.7);
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://placehold.co/1920x1080/1a202c/2d3748?text=.');
+            background-size: cover;
             pointer-events: auto;
         }
         /* Estilos del Chat */
@@ -36,28 +45,47 @@
             position: absolute;
             bottom: 10px;
             left: 10px;
-            width: 300px;
-            height: 200px;
-            background-color: rgba(0,0,0,0.4);
+            width: 320px;
+            height: 220px;
+            background-color: rgba(26, 32, 44, 0.7);
+            backdrop-filter: blur(5px);
             border-radius: 8px;
             display: flex;
             flex-direction: column;
             pointer-events: auto;
+            border: 1px solid rgba(255,255,255,0.1);
         }
         #chat-messages {
             flex-grow: 1;
-            padding: 8px;
+            padding: 10px;
             overflow-y: auto;
             color: white;
             font-size: 14px;
+            scrollbar-width: thin;
+            scrollbar-color: #4A5568 #2D3748;
+        }
+        #chat-input-area {
+            display: flex;
+            border-top: 1px solid rgba(255,255,255,0.1);
         }
         #chat-input {
-            border-top: 1px solid #4a5568;
-            padding: 4px;
+            padding: 8px;
             background: transparent;
             color: white;
-            width: 100%;
+            flex-grow: 1;
+            border: none;
+            outline: none;
         }
+        #send-chat-button {
+            background-color: #2b6cb0;
+            color: white;
+            border: none;
+            padding: 0 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #send-chat-button:hover { background-color: #2c5282; }
+
         /* Estilos del Joystick Virtual */
         #joystick-container {
             position: absolute;
@@ -89,69 +117,67 @@
 
     <canvas id="gameCanvas" class="hidden"></canvas>
     
-    <!-- Controles Móviles -->
     <div id="joystick-container">
         <div id="joystick-base"></div>
         <div id="joystick-thumb"></div>
     </div>
 
-    <div id="ui-container" class="p-4 md:p-6 flex flex-col justify-between">
-        <!-- Parte superior: Información del jugador y Puntuaciones de equipo -->
-        <div class="flex justify-between items-start text-white w-full">
-            <div id="player-info" class="hidden bg-gray-800 bg-opacity-70 p-3 rounded-lg shadow-lg">
-                <h2 id="player-name-display" class="text-xl font-bold"></h2>
+    <div id="ui-container" class="p-4 md:p-6 flex flex-col justify-between h-full">
+        <!-- Parte superior: Información, Puntuaciones, Marcador -->
+        <div class="flex justify-between items-start text-white w-full gap-4">
+            <div id="player-info" class="hidden bg-gray-800 bg-opacity-70 p-3 rounded-lg shadow-lg min-w-[200px]">
+                <h2 id="player-name-display" class="text-xl font-bold truncate"></h2>
                 <div class="w-full bg-gray-600 rounded-full h-2.5 mt-2">
-                    <div id="health-bar" class="bg-green-500 h-2.5 rounded-full" style="width: 100%"></div>
+                    <div id="health-bar" class="bg-green-500 h-2.5 rounded-full transition-all duration-300"></div>
                 </div>
                 <p class="text-lg mt-1">Puntuación: <span id="score-display">0</span></p>
                 <button id="logout-button" class="ui-element mt-3 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 text-sm">
                     Cerrar Sesión
                 </button>
             </div>
-             <div id="team-scores" class="flex-grow flex justify-center items-center gap-8 text-2xl font-bold">
+             <div id="team-scores" class="flex-grow flex justify-center items-center gap-8 text-3xl font-bold game-title text-shadow">
                  <span id="blue-score" class="text-blue-400">Azul: 0</span>
                  <span id="red-score" class="text-red-400">Rojo: 0</span>
              </div>
-             <div id="session-info" class="hidden text-center bg-gray-800 bg-opacity-70 p-3 rounded-lg shadow-lg min-w-[200px]">
-                <p class="text-sm text-gray-300">Tu ID de Jugador:</p>
-                <p id="player-id-display" class="font-mono text-lg break-all">Cargando...</p>
-            </div>
-        </div>
-        
-        <!-- Parte inferior: Marcador y Chat -->
-        <div class="flex justify-between items-end">
-             <div id="chat-container">
-                <div id="chat-messages"></div>
-                <input type="text" id="chat-input" placeholder="Escribe un mensaje..." class="ui-element">
-             </div>
-             <div id="leaderboard-container" class="self-end hidden">
+             <div id="leaderboard-container" class="self-start hidden">
                 <div id="leaderboard" class="bg-gray-800 bg-opacity-70 p-4 rounded-lg shadow-lg w-64">
                     <h3 class="text-lg font-bold text-white border-b border-gray-600 pb-2 mb-2">Marcador</h3>
                     <ul id="leaderboard-list" class="text-white"></ul>
                 </div>
             </div>
         </div>
+        
+        <!-- Parte inferior: Chat -->
+        <div class="flex justify-between items-end">
+             <div id="chat-container">
+                <div id="chat-messages"></div>
+                <div id="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Escribe un mensaje..." class="ui-element">
+                    <button id="send-chat-button" class="ui-element">Enviar</button>
+                </div>
+             </div>
+        </div>
     </div>
 
     <!-- Pantalla para unirse al juego -->
     <div id="join-screen" class="absolute inset-0 flex items-center justify-center">
-        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl text-center text-white w-full max-w-sm">
-            <h1 class="text-4xl font-bold mb-2">Tanques: Batalla de Equipos</h1>
-            <p class="text-gray-400 mb-6">Inicia sesión o regístrate para jugar.</p>
-            <p id="auth-error" class="text-red-400 mb-4 text-sm"></p>
+        <div class="bg-gray-900 bg-opacity-80 backdrop-filter backdrop-blur-md p-8 rounded-lg shadow-2xl text-center text-white w-full max-w-sm border border-gray-700">
+            <h1 class="text-5xl font-bold mb-2 game-title text-blue-400">TANQUES</h1>
+            <p class="text-gray-400 mb-6">Batalla de Equipos</p>
+            <p id="auth-error" class="text-red-400 mb-4 text-sm h-5"></p>
             <input type="text" id="username-input" placeholder="Nombre de usuario" class="w-full px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" autocomplete="username">
             <input type="password" id="password-input" placeholder="Contraseña" class="w-full px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" autocomplete="current-password">
-            <button id="login-register-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300">
+            <button id="login-register-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 transform hover:scale-105">
                 Entrar / Registrarse
             </button>
         </div>
     </div>
     
     <!-- Mensaje de muerte -->
-    <div id="death-message" class="hidden absolute inset-0 flex items-center justify-center bg-black bg-opacity-70">
+    <div id="death-message" class="hidden absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 backdrop-filter backdrop-blur-sm">
         <div class="text-center text-white">
-            <h2 class="text-5xl font-bold mb-4">¡Has sido eliminado!</h2>
-            <button id="respawn-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-md transition duration-300 text-xl">
+            <h2 class="text-5xl font-bold mb-4 game-title">¡ELIMINADO!</h2>
+            <button id="respawn-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-md transition duration-300 text-xl transform hover:scale-105">
                 Reaparecer
             </button>
         </div>
@@ -186,34 +212,15 @@
 
         // --- Constantes del Juego ---
         const TANK_SIZE = 40;
+        const MAP_TILE_SIZE = 60;
         const TURRET_LENGTH = TANK_SIZE * 0.9;
         const TURRET_WIDTH = 10;
         const BULLET_SIZE = 8;
         const BULLET_SPEED = 12;
         const MAX_HEALTH = 100;
         const TANK_SPEED = 3;
-        const MAP_TILE_SIZE = 60;
         const MAP = [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,1],
-            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
-            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],
-            [1,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,1],
-            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],
-            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
-            [1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,1],[1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[1,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,1],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],[1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
         ];
         const MAP_WIDTH = MAP[0].length * MAP_TILE_SIZE;
         const MAP_HEIGHT = MAP.length * MAP_TILE_SIZE;
@@ -222,12 +229,15 @@
         let localPlayer = null;
         let players = {};
         let bullets = {};
+        let effects = [];
         let mouse = { x: 0, y: 0 };
         let camera = { x: 0, y: 0 };
         let teamScores = { red: 0, blue: 0 };
         const keys = {};
         let unsubscribes = [];
         let isMobile = false;
+        let audioStarted = false;
+        let animationFrameId;
 
         // --- Elementos de la UI ---
         const canvas = document.getElementById('gameCanvas');
@@ -240,18 +250,42 @@
         const playerInfo = document.getElementById('player-info');
         const deathMessage = document.getElementById('death-message');
         const respawnButton = document.getElementById('respawn-button');
-        const playerIdDisplay = document.getElementById('player-id-display');
         const logoutButton = document.getElementById('logout-button');
-        const sessionInfo = document.getElementById('session-info');
         const leaderboardContainer = document.getElementById('leaderboard-container');
+        const leaderboardList = document.getElementById('leaderboard-list');
         const chatInput = document.getElementById('chat-input');
+        const sendChatButton = document.getElementById('send-chat-button');
         const chatMessages = document.getElementById('chat-messages');
         const joystickContainer = document.getElementById('joystick-container');
         const joystickThumb = document.getElementById('joystick-thumb');
 
+        // --- Configuración de Sonido ---
+        let shootSound, hitSound, explosionSound;
+        function setupSounds() {
+            shootSound = new Tone.Synth({
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0.05, release: 0.1 }
+            }).toDestination();
+            hitSound = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.001, decay: 0.1, sustain: 0 }
+            }).toDestination();
+            explosionSound = new Tone.MembraneSynth({
+                pitchDecay: 0.05, octaves: 10,
+                envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: 'exponential' }
+            }).toDestination();
+        }
+
+        async function startAudioContext() {
+            if (audioStarted) return;
+            await Tone.start();
+            setupSounds();
+            audioStarted = true;
+            console.log("Audio context started.");
+        }
+        
         // --- Lógica del Juego ---
         
-        // Detección de dispositivo móvil
         function detectDevice() {
             isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             if (isMobile) {
@@ -260,13 +294,11 @@
             }
         }
 
-        // Función para ajustar el tamaño del canvas
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         }
-        
-        // Asignación de equipo
+
         async function assignTeam() {
             const snapshot = await getDocs(playersCollection);
             let redCount = 0;
@@ -278,7 +310,6 @@
             return redCount <= blueCount ? 'red' : 'blue';
         }
 
-        // Crear jugador
         async function createPlayerDocument(user, name) {
             const team = await assignTeam();
             const spawnPoint = getSpawnPoint();
@@ -290,7 +321,6 @@
                 lastSeen: serverTimestamp()
             };
             await setDoc(doc(playersCollection, user.uid), newPlayer);
-            // Asegurarse de que el doc de puntuación exista
             const scoreDoc = await getDoc(gameStateRef);
             if (!scoreDoc.exists()) {
                 await setDoc(gameStateRef, { red: 0, blue: 0 });
@@ -304,11 +334,11 @@
                 y = Math.random() * (MAP_HEIGHT - MAP_TILE_SIZE * 2) + MAP_TILE_SIZE;
                 const gridX = Math.floor(x / MAP_TILE_SIZE);
                 const gridY = Math.floor(y / MAP_TILE_SIZE);
-                onWall = MAP[gridY][gridX] === 1;
+                onWall = MAP[gridY]?.[gridX] === 1;
             } while (onWall);
             return { x, y };
         }
-        
+
         function checkWallCollision(x, y, size) {
             const radius = size / 2;
             const gridX1 = Math.floor((x - radius) / MAP_TILE_SIZE);
@@ -321,7 +351,7 @@
             }
             return false;
         }
-
+        
         function handleInput(joystickInput = {dx: 0, dy: 0}) {
             if (!localPlayer || localPlayer.isDead) return;
 
@@ -340,7 +370,6 @@
                 const moveX = localPlayer.x + (dx / mag) * TANK_SPEED;
                 const moveY = localPlayer.y + (dy / mag) * TANK_SPEED;
                 
-                // Movimiento con colisión de paredes (deslizamiento)
                 if (!checkWallCollision(moveX, localPlayer.y, TANK_SIZE)) {
                     localPlayer.x = moveX;
                 }
@@ -359,9 +388,12 @@
         function takeDamage(amount, attackerId) {
             if (!localPlayer || localPlayer.isDead) return;
             const attacker = players[attackerId];
-            if (!attacker || attacker.team === localPlayer.team) return; // No hay fuego amigo
+            if (!attacker || attacker.team === localPlayer.team) return; 
 
             localPlayer.health -= amount;
+            localPlayer.lastHitTime = Date.now();
+            if (audioStarted) hitSound.triggerAttackRelease("0.1");
+
             updateUI();
 
             if (localPlayer.health <= 0) {
@@ -375,15 +407,16 @@
         async function playerDied(killerId) {
              playerInfo.classList.add('hidden');
              deathMessage.classList.remove('hidden');
-             
+             createExplosion(localPlayer.x, localPlayer.y);
+             if (audioStarted) explosionSound.triggerAttackRelease("C1", "0.5s");
+
              const killer = players[killerId];
              if (killer && killerId !== localPlayer.id) {
                  const newScore = (killer.score || 0) + 1;
                  updateDoc(doc(playersCollection, killerId), { score: newScore });
 
-                 // Actualizar puntuación del equipo
                  const teamToUpdate = killer.team === 'red' ? 'red' : 'blue';
-                 const currentScores = (await getDoc(gameStateRef)).data();
+                 const currentScores = (await getDoc(gameStateRef)).data() || { red: 0, blue: 0 };
                  const newTeamScore = (currentScores[teamToUpdate] || 0) + 1;
                  await updateDoc(gameStateRef, { [teamToUpdate]: newTeamScore });
              }
@@ -405,21 +438,19 @@
             playerInfo.classList.remove('hidden');
         }
 
-        // Dibujar mapa
         function drawMap() {
             for (let y = 0; y < MAP.length; y++) {
                 for (let x = 0; x < MAP[y].length; x++) {
                     if (MAP[y][x] === 1) {
-                        ctx.fillStyle = "#a0aec0"; // Color de pared
+                        ctx.fillStyle = "#a0aec0";
                         ctx.fillRect(x * MAP_TILE_SIZE, y * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE);
                     }
                 }
             }
         }
 
-        // Bucle de juego
+        // --- Bucle y Renderizado ---
         let lastUpdateTime = 0;
-        let animationFrameId;
         function gameLoop(timestamp) {
             if (!localPlayer) return;
             
@@ -430,18 +461,22 @@
 
             updatePlayersInterpolation();
             updateBullets();
+            updateEffects();
             draw();
             animationFrameId = requestAnimationFrame(gameLoop);
         }
 
-        // Interpolación para movimiento suave
         function updatePlayersInterpolation() {
             for(const id in players) {
                 const p = players[id];
                 if(id === localPlayer?.id) continue;
                 if(p.targetX) {
-                    p.x += (p.targetX - p.x) * 0.2;
-                    p.y += (p.targetY - p.y) * 0.2;
+                    p.x += (p.targetX - p.x) * 0.3;
+                    p.y += (p.targetY - p.y) * 0.3;
+                    let angleDiff = p.angle - p.currentAngle;
+                    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                    p.currentAngle += angleDiff * 0.3;
                 }
             }
         }
@@ -452,7 +487,6 @@
                 bullet.x += bullet.vx;
                 bullet.y += bullet.vy;
 
-                // Colisión de balas con paredes
                 if (checkWallCollision(bullet.x, bullet.y, BULLET_SIZE)) {
                     deleteDoc(doc(bulletsCollection, id));
                     continue;
@@ -468,6 +502,77 @@
             }
         }
 
+        function updateEffects() {
+            effects = effects.filter(effect => {
+                effect.update();
+                return !effect.isFinished();
+            });
+        }
+
+        function draw() {
+            if (!localPlayer) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y);
+            
+            drawGrid();
+            drawMap();
+
+            effects.forEach(effect => effect.draw(ctx));
+            for (const id in bullets) { drawBullet(bullets[id]); }
+            const sortedPlayers = Object.values(players).sort((a,b) => a.y - b.y);
+            sortedPlayers.forEach(player => { if(!player.isDead) drawTank(player); });
+
+            ctx.restore();
+        }
+
+        function drawTank(player) {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            
+            if (player.lastHitTime && Date.now() - player.lastHitTime < 150) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.beginPath();
+                ctx.arc(0, 0, TANK_SIZE / 2 + 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            const displayAngle = player.currentAngle !== undefined ? player.currentAngle : player.angle;
+
+            ctx.fillStyle = player.team === 'red' ? '#ef4444' : '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(0, 0, TANK_SIZE / 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.save();
+            ctx.rotate(displayAngle);
+            ctx.fillStyle = "#a0aec0";
+            ctx.fillRect(0, -TURRET_WIDTH / 2, TURRET_LENGTH, TURRET_WIDTH);
+            ctx.restore();
+
+            ctx.strokeStyle = "#4a5568";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.fillStyle = "white";
+            ctx.font = "14px sans-serif";
+            ctx.textAlign = "center";
+            ctx.shadowColor = 'black';
+            ctx.shadowBlur = 4;
+            ctx.fillText(player.name, 0, -TANK_SIZE / 2 - 15);
+            ctx.shadowBlur = 0;
+            
+             if (player.health < MAX_HEALTH) {
+                ctx.fillStyle = "rgba(0,0,0,0.5)";
+                ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2 - 10, TANK_SIZE, 8);
+                const healthColor = player.health > MAX_HEALTH * 0.3 ? '#48bb78' : '#f56565';
+                ctx.fillStyle = healthColor;
+                ctx.fillRect(-TANK_SIZE / 2 + 1, -TANK_SIZE / 2 - 9, (TANK_SIZE - 2) * (player.health / MAX_HEALTH), 6);
+            }
+
+            ctx.restore();
+        }
+        
         function drawGrid() {
             const gridSize = 50;
             ctx.strokeStyle = "#4a5568";
@@ -490,57 +595,6 @@
             }
         }
 
-        function draw() {
-            if (!localPlayer) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y);
-            
-            drawGrid();
-            drawMap();
-
-            for (const id in bullets) { drawBullet(bullets[id]); }
-            const sortedPlayers = Object.values(players).sort((a,b) => a.y - b.y);
-            sortedPlayers.forEach(player => { if(!player.isDead) drawTank(player); });
-
-            ctx.restore();
-        }
-
-        function drawTank(player) {
-            ctx.save();
-            ctx.translate(player.x, player.y);
-            
-            ctx.fillStyle = player.team === 'red' ? '#ef4444' : '#3b82f6';
-            ctx.beginPath();
-            ctx.arc(0, 0, TANK_SIZE / 2, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.save();
-            ctx.rotate(player.angle);
-            ctx.fillStyle = "#a0aec0";
-            ctx.fillRect(0, -TURRET_WIDTH / 2, TURRET_LENGTH, TURRET_WIDTH);
-            ctx.restore();
-
-            ctx.strokeStyle = "#4a5568";
-            ctx.lineWidth = 3;
-            ctx.stroke();
-
-            ctx.fillStyle = "white";
-            ctx.font = "14px sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText(player.name, 0, -TANK_SIZE / 2 - 15);
-            
-             if (player.health < MAX_HEALTH) {
-                ctx.fillStyle = "black";
-                ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2 - 10, TANK_SIZE, 8);
-                const healthColor = player.health > MAX_HEALTH * 0.3 ? 'lime' : 'red';
-                ctx.fillStyle = healthColor;
-                ctx.fillRect(-TANK_SIZE / 2 + 1, -TANK_SIZE / 2 - 9, (TANK_SIZE - 2) * (player.health / MAX_HEALTH), 6);
-            }
-
-            ctx.restore();
-        }
-        
         function drawBullet(b) { 
             ctx.fillStyle = "#f56565"; 
             ctx.beginPath(); 
@@ -554,17 +608,23 @@
              document.getElementById('score-display').textContent = localPlayer.score;
              document.getElementById('blue-score').textContent = `Azul: ${teamScores.blue || 0}`;
              document.getElementById('red-score').textContent = `Rojo: ${teamScores.red || 0}`;
-
-             // ... (actualización del marcador)
+             
+             leaderboardList.innerHTML = '';
+             const sortedPlayers = Object.values(players).sort((a, b) => b.score - a.score);
+             sortedPlayers.slice(0, 5).forEach(p => {
+                 const li = document.createElement('li');
+                 const teamColor = p.team === 'red' ? 'text-red-400' : 'text-blue-400';
+                 li.className = 'flex justify-between';
+                 li.innerHTML = `<span class="${teamColor} truncate">${p.name}</span> <span>${p.score}</span>`;
+                 leaderboardList.appendChild(li);
+             });
         }
-
-        // Controles Móviles
+        
         let joystickInput = { dx: 0, dy: 0 };
         function setupMobileControls() {
             let touchId = null;
             let startPos = { x: 0, y: 0 };
             
-            // Lado izquierdo para mover (Joystick)
             canvas.addEventListener('touchstart', (e) => {
                 for (const touch of e.changedTouches) {
                     if (touch.clientX < window.innerWidth / 2 && touchId === null) {
@@ -607,7 +667,6 @@
                 }
             });
 
-            // Lado derecho para apuntar y disparar
             canvas.addEventListener('pointerdown', (e) => {
                 if (e.clientX > window.innerWidth / 2 && localPlayer && !localPlayer.isDead) {
                     const playerScreenX = localPlayer.x - camera.x + canvas.width / 2;
@@ -617,13 +676,11 @@
                 }
             });
 
-            // Loop de input para el joystick
             setInterval(() => {
                 if (localPlayer) handleInput(joystickInput);
             }, 1000/60);
         }
 
-        // Lógica de Chat
         async function sendChatMessage() {
             const text = chatInput.value.trim();
             if (text && localPlayer) {
@@ -636,7 +693,40 @@
                 chatInput.value = '';
             }
         }
-        
+
+        // --- Efectos Visuales ---
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.size = Math.random() * 5 + 2;
+                this.life = Math.random() * 50 + 20;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 1;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                this.life--; this.size *= 0.98;
+            }
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            isFinished() {
+                return this.life <= 0;
+            }
+        }
+        function createExplosion(x, y) {
+            const particleCount = 30;
+            const colors = ['#f56565', '#ed8936', '#f6e05e', '#a0aec0'];
+            for (let i = 0; i < particleCount; i++) {
+                effects.push(new Particle(x, y, colors[Math.floor(Math.random() * colors.length)]));
+            }
+        }
+
+        // --- Inicialización y Listeners ---
         function init() {
             detectDevice();
             resizeCanvas();
@@ -645,25 +735,21 @@
             if (!isMobile) {
                 window.addEventListener('keydown', (e) => { keys[e.key] = true; });
                 window.addEventListener('keyup', (e) => { keys[e.key] = false; });
-                canvas.addEventListener('mousemove', (e) => {
-                    mouse.x = e.clientX;
-                    mouse.y = e.clientY;
-                });
+                canvas.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
                 let shootTimeout;
                 canvas.addEventListener('mousedown', () => { shoot(); shootTimeout = setInterval(shoot, 150); });
                 canvas.addEventListener('mouseup', () => { clearInterval(shootTimeout); });
-                setInterval(() => handleInput(), 1000/60); // Loop de input para PC
+                setInterval(() => handleInput(), 1000/60);
             }
             
             chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+            sendChatButton.addEventListener('click', sendChatMessage);
 
             onAuthStateChanged(auth, (user) => {
                 unsubscribes.forEach(unsub => unsub());
                 unsubscribes = [];
 
                 if (user) {
-                    console.log("Usuario autenticado:", user.uid);
-                    
                     const unsubPlayers = onSnapshot(playersCollection, (snapshot) => {
                         let playerExists = false;
                         snapshot.docChanges().forEach((change) => {
@@ -672,13 +758,19 @@
                             if (id === user.uid) playerExists = true;
                             
                             if (change.type === "added") {
-                                players[id] = { id, ...data };
+                                players[id] = { id, currentAngle: data.angle, ...data };
                             } else if (change.type === "modified") {
                                 if(players[id]) {
-                                    players[id].targetX = data.x;
-                                    players[id].targetY = data.y;
-                                    players[id].angle = data.angle;
-                                    Object.assign(players[id], data); 
+                                    if(id === localPlayer?.id) {
+                                        players[id].health = data.health;
+                                        players[id].score = data.score;
+                                        players[id].isDead = data.isDead;
+                                    } else {
+                                        players[id].targetX = data.x;
+                                        players[id].targetY = data.y;
+                                        players[id].angle = data.angle;
+                                        Object.assign(players[id], data); 
+                                    }
                                 }
                             } else if (change.type === "removed") {
                                 delete players[id];
@@ -701,7 +793,11 @@
                     unsubscribes.push(unsubBullets);
                     
                     const unsubScores = onSnapshot(gameStateRef, (doc) => {
-                        if (doc.exists()) teamScores = doc.data();
+                        if (doc.exists()) {
+                            teamScores = doc.data();
+                        } else {
+                            teamScores = { red: 0, blue: 0 };
+                        }
                         updateUI();
                     });
                     unsubscribes.push(unsubScores);
@@ -724,7 +820,7 @@
                         const snapshot = await getDocs(playersCollection);
                         snapshot.forEach(doc => {
                             const playerData = doc.data();
-                            if (playerData.lastSeen) {
+                            if (playerData.lastSeen && playerData.lastSeen.toMillis) {
                                 const age = Date.now() - playerData.lastSeen.toMillis();
                                 if (age > 20000) { // 20 segundos
                                     deleteDoc(doc.ref);
@@ -747,20 +843,15 @@
         init();
         
         async function handleLoginRegister() {
+            await startAudioContext();
             const username = usernameInput.value.trim();
             const password = passwordInput.value.trim();
             authError.textContent = '';
-
-            if (!username || !password) {
-                authError.textContent = 'Por favor, ingresa usuario y contraseña.'; return;
-            }
-            if (password.length < 6) {
-                authError.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return;
-            }
+            if (!username || !password) { authError.textContent = 'Por favor, ingresa usuario y contraseña.'; return; }
+            if (password.length < 6) { authError.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
             const email = `${username.replace(/\s+/g, '_')}@tanksgame.io`;
-
-            try { await signInWithEmailAndPassword(auth, email, password);
-            } catch (error) {
+            try { await signInWithEmailAndPassword(auth, email, password); } 
+            catch (error) {
                 if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
                     try {
                         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -776,10 +867,8 @@
             joinScreen.classList.add('hidden');
             canvas.classList.remove('hidden');
             playerInfo.classList.remove('hidden');
-            sessionInfo.classList.remove('hidden');
             leaderboardContainer.classList.remove('hidden');
             document.getElementById('player-name-display').textContent = localPlayer.name;
-            playerIdDisplay.textContent = localPlayer.id;
             updateUI();
             if(animationFrameId) cancelAnimationFrame(animationFrameId);
             gameLoop();
@@ -791,13 +880,13 @@
             joinScreen.classList.remove('hidden');
             canvas.classList.add('hidden');
             playerInfo.classList.add('hidden');
-            sessionInfo.classList.add('hidden');
             leaderboardContainer.classList.add('hidden');
             deathMessage.classList.add('hidden');
         }
 
         function shoot() {
              if (!localPlayer || localPlayer.isDead) return;
+             if (audioStarted) shootSound.triggerAttackRelease("C5", "0.1");
              const bulletId = doc(collection(db, 'dummy')).id;
              const newBullet = {
                  id: bulletId, ownerId: localPlayer.id,
@@ -815,8 +904,8 @@
             updateDoc(doc(playersCollection, localPlayer.id), {
                 x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle, lastSeen: serverTimestamp()
             });
-            camera.x = localPlayer.x;
-            camera.y = localPlayer.y;
+            camera.x += (localPlayer.x - camera.x) * 0.1;
+            camera.y += (localPlayer.y - camera.y) * 0.1;
             for (const bulletId in bullets) {
                 const bullet = bullets[bulletId];
                 if (bullet.ownerId === localPlayer.id) continue;
