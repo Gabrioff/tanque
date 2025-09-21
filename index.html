@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Tanques Multijugador</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -31,15 +31,73 @@
             background-color: rgba(0, 0, 0, 0.7);
             pointer-events: auto;
         }
+        /* Estilos del Chat */
+        #chat-container {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 300px;
+            height: 200px;
+            background-color: rgba(0,0,0,0.4);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+        }
+        #chat-messages {
+            flex-grow: 1;
+            padding: 8px;
+            overflow-y: auto;
+            color: white;
+            font-size: 14px;
+        }
+        #chat-input {
+            border-top: 1px solid #4a5568;
+            padding: 4px;
+            background: transparent;
+            color: white;
+            width: 100%;
+        }
+        /* Estilos del Joystick Virtual */
+        #joystick-container {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            width: 120px;
+            height: 120px;
+            display: none; /* Oculto por defecto */
+        }
+        #joystick-base {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: rgba(100, 100, 100, 0.4);
+            border-radius: 50%;
+        }
+        #joystick-thumb {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(200, 200, 200, 0.6);
+            border-radius: 50%;
+            top: 30px;
+            left: 30px;
+        }
     </style>
 </head>
 <body class="w-screen h-screen">
 
     <canvas id="gameCanvas" class="hidden"></canvas>
+    
+    <!-- Controles Móviles -->
+    <div id="joystick-container">
+        <div id="joystick-base"></div>
+        <div id="joystick-thumb"></div>
+    </div>
 
     <div id="ui-container" class="p-4 md:p-6 flex flex-col justify-between">
-        <!-- Parte superior: Información del jugador y ID de sesión -->
-        <div class="flex justify-between items-start text-white">
+        <!-- Parte superior: Información del jugador y Puntuaciones de equipo -->
+        <div class="flex justify-between items-start text-white w-full">
             <div id="player-info" class="hidden bg-gray-800 bg-opacity-70 p-3 rounded-lg shadow-lg">
                 <h2 id="player-name-display" class="text-xl font-bold"></h2>
                 <div class="w-full bg-gray-600 rounded-full h-2.5 mt-2">
@@ -50,19 +108,27 @@
                     Cerrar Sesión
                 </button>
             </div>
-             <div id="session-info" class="hidden text-center bg-gray-800 bg-opacity-70 p-3 rounded-lg shadow-lg">
+             <div id="team-scores" class="flex-grow flex justify-center items-center gap-8 text-2xl font-bold">
+                 <span id="blue-score" class="text-blue-400">Azul: 0</span>
+                 <span id="red-score" class="text-red-400">Rojo: 0</span>
+             </div>
+             <div id="session-info" class="hidden text-center bg-gray-800 bg-opacity-70 p-3 rounded-lg shadow-lg min-w-[200px]">
                 <p class="text-sm text-gray-300">Tu ID de Jugador:</p>
                 <p id="player-id-display" class="font-mono text-lg break-all">Cargando...</p>
             </div>
         </div>
         
-        <!-- Parte inferior: Marcador -->
-        <div id="leaderboard-container" class="self-end hidden">
-            <div id="leaderboard" class="bg-gray-800 bg-opacity-70 p-4 rounded-lg shadow-lg w-64">
-                <h3 class="text-lg font-bold text-white border-b border-gray-600 pb-2 mb-2">Marcador</h3>
-                <ul id="leaderboard-list" class="text-white">
-                    <!-- Las puntuaciones se llenarán aquí -->
-                </ul>
+        <!-- Parte inferior: Marcador y Chat -->
+        <div class="flex justify-between items-end">
+             <div id="chat-container">
+                <div id="chat-messages"></div>
+                <input type="text" id="chat-input" placeholder="Escribe un mensaje..." class="ui-element">
+             </div>
+             <div id="leaderboard-container" class="self-end hidden">
+                <div id="leaderboard" class="bg-gray-800 bg-opacity-70 p-4 rounded-lg shadow-lg w-64">
+                    <h3 class="text-lg font-bold text-white border-b border-gray-600 pb-2 mb-2">Marcador</h3>
+                    <ul id="leaderboard-list" class="text-white"></ul>
+                </div>
             </div>
         </div>
     </div>
@@ -70,7 +136,7 @@
     <!-- Pantalla para unirse al juego -->
     <div id="join-screen" class="absolute inset-0 flex items-center justify-center">
         <div class="bg-gray-800 p-8 rounded-lg shadow-2xl text-center text-white w-full max-w-sm">
-            <h1 class="text-4xl font-bold mb-2">Tanques Multijugador</h1>
+            <h1 class="text-4xl font-bold mb-2">Tanques: Batalla de Equipos</h1>
             <p class="text-gray-400 mb-6">Inicia sesión o regístrate para jugar.</p>
             <p id="auth-error" class="text-red-400 mb-4 text-sm"></p>
             <input type="text" id="username-input" placeholder="Nombre de usuario" class="w-full px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" autocomplete="username">
@@ -95,7 +161,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, serverTimestamp, updateDoc, getDocs, getDoc, query, orderBy, limit, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Configuración de Firebase ---
         const firebaseConfig = {
@@ -115,29 +181,57 @@
 
         const playersCollection = collection(db, `/artifacts/${appId}/public/data/tanks-players`);
         const bulletsCollection = collection(db, `/artifacts/${appId}/public/data/tanks-bullets`);
+        const gameStateRef = doc(db, `/artifacts/${appId}/public/data/tanks-gamestate/scores`);
+        const chatCollection = collection(db, `/artifacts/${appId}/public/data/tanks-chat`);
 
-        // --- Variables del Juego ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-
+        // --- Constantes del Juego ---
         const TANK_SIZE = 40;
         const TURRET_LENGTH = TANK_SIZE * 0.9;
         const TURRET_WIDTH = 10;
         const BULLET_SIZE = 8;
-        const BULLET_SPEED = 12; // Velocidad aumentada
+        const BULLET_SPEED = 12;
         const MAX_HEALTH = 100;
         const TANK_SPEED = 3;
-
+        const MAP_TILE_SIZE = 60;
+        const MAP = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],
+            [1,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,1],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
+            [1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        ];
+        const MAP_WIDTH = MAP[0].length * MAP_TILE_SIZE;
+        const MAP_HEIGHT = MAP.length * MAP_TILE_SIZE;
+        
+        // --- Variables del Juego ---
         let localPlayer = null;
         let players = {};
         let bullets = {};
         let mouse = { x: 0, y: 0 };
         let camera = { x: 0, y: 0 };
+        let teamScores = { red: 0, blue: 0 };
         const keys = {};
-        let unsubPlayers;
-        let unsubBullets;
+        let unsubscribes = [];
+        let isMobile = false;
 
         // --- Elementos de la UI ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
         const joinScreen = document.getElementById('join-screen');
         const usernameInput = document.getElementById('username-input');
         const passwordInput = document.getElementById('password-input');
@@ -150,201 +244,123 @@
         const logoutButton = document.getElementById('logout-button');
         const sessionInfo = document.getElementById('session-info');
         const leaderboardContainer = document.getElementById('leaderboard-container');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessages = document.getElementById('chat-messages');
+        const joystickContainer = document.getElementById('joystick-container');
+        const joystickThumb = document.getElementById('joystick-thumb');
 
-        // --- Funciones de Utilidad ---
-        function getRandomColor() {
-            const letters = '0123456789ABCDEF';
-            let color = '#';
-            for (let i = 0; i < 6; i++) {
-                color += letters[Math.floor(Math.random() * 16)];
+        // --- Lógica del Juego ---
+        
+        // Detección de dispositivo móvil
+        function detectDevice() {
+            isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) {
+                joystickContainer.style.display = 'block';
+                setupMobileControls();
             }
-            return color;
         }
 
+        // Función para ajustar el tamaño del canvas
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         }
-
-        // --- Lógica de Autenticación y Juego ---
-        async function handleLoginRegister() {
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value.trim();
-            authError.textContent = '';
-
-            if (!username || !password) {
-                authError.textContent = 'Por favor, ingresa usuario y contraseña.';
-                return;
-            }
-            if (password.length < 6) {
-                authError.textContent = 'La contraseña debe tener al menos 6 caracteres.';
-                return;
-            }
-
-            // Usamos un dominio falso para el sistema de autenticación de Firebase
-            const email = `${username}@tanksgame.io`;
-
-            try {
-                // Intentar iniciar sesión primero
-                await signInWithEmailAndPassword(auth, email, password);
-                console.log('Inicio de sesión exitoso');
-            } catch (error) {
-                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                    // Si el usuario no existe, intentar registrarlo
-                    try {
-                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                        console.log('Usuario registrado exitosamente');
-                        // Crear el documento del jugador en Firestore
-                        await createPlayerDocument(userCredential.user, username);
-                    } catch (registerError) {
-                        console.error("Error de registro:", registerError);
-                        authError.textContent = 'No se pudo registrar. Intenta con otro nombre.';
-                    }
-                } else {
-                    console.error("Error de inicio de sesión:", error);
-                    authError.textContent = 'Error al iniciar sesión. Verifica tus datos.';
-                }
-            }
+        
+        // Asignación de equipo
+        async function assignTeam() {
+            const snapshot = await getDocs(playersCollection);
+            let redCount = 0;
+            let blueCount = 0;
+            snapshot.forEach(doc => {
+                if (doc.data().team === 'red') redCount++;
+                else if (doc.data().team === 'blue') blueCount++;
+            });
+            return redCount <= blueCount ? 'red' : 'blue';
         }
 
+        // Crear jugador
         async function createPlayerDocument(user, name) {
+            const team = await assignTeam();
+            const spawnPoint = getSpawnPoint();
             const newPlayer = {
-                id: user.uid,
-                name: name,
-                x: Math.random() * 1000,
-                y: Math.random() * 1000,
-                angle: 0,
-                health: MAX_HEALTH,
-                score: 0,
-                color: getRandomColor(),
-                isDead: false,
+                id: user.uid, name, team,
+                x: spawnPoint.x, y: spawnPoint.y,
+                angle: 0, health: MAX_HEALTH, score: 0, isDead: false,
+                color: team === 'red' ? '#ef4444' : '#3b82f6',
                 lastSeen: serverTimestamp()
             };
             await setDoc(doc(playersCollection, user.uid), newPlayer);
+            // Asegurarse de que el doc de puntuación exista
+            const scoreDoc = await getDoc(gameStateRef);
+            if (!scoreDoc.exists()) {
+                await setDoc(gameStateRef, { red: 0, blue: 0 });
+            }
         }
 
-        function startGame(playerData) {
-            localPlayer = playerData;
-            players[localPlayer.id] = localPlayer;
-            
-            joinScreen.classList.add('hidden');
-            canvas.classList.remove('hidden');
-            playerInfo.classList.remove('hidden');
-            sessionInfo.classList.remove('hidden');
-            leaderboardContainer.classList.remove('hidden');
-            
-            document.getElementById('player-name-display').textContent = localPlayer.name;
-            playerIdDisplay.textContent = localPlayer.id;
+        function getSpawnPoint() {
+            let x, y, onWall;
+            do {
+                x = Math.random() * (MAP_WIDTH - MAP_TILE_SIZE * 2) + MAP_TILE_SIZE;
+                y = Math.random() * (MAP_HEIGHT - MAP_TILE_SIZE * 2) + MAP_TILE_SIZE;
+                const gridX = Math.floor(x / MAP_TILE_SIZE);
+                const gridY = Math.floor(y / MAP_TILE_SIZE);
+                onWall = MAP[gridY][gridX] === 1;
+            } while (onWall);
+            return { x, y };
+        }
+        
+        function checkWallCollision(x, y, size) {
+            const radius = size / 2;
+            const gridX1 = Math.floor((x - radius) / MAP_TILE_SIZE);
+            const gridY1 = Math.floor((y - radius) / MAP_TILE_SIZE);
+            const gridX2 = Math.floor((x + radius) / MAP_TILE_SIZE);
+            const gridY2 = Math.floor((y + radius) / MAP_TILE_SIZE);
 
-            updateUI();
-            gameLoop();
+            if (MAP[gridY1]?.[gridX1] === 1 || MAP[gridY1]?.[gridX2] === 1 || MAP[gridY2]?.[gridX1] === 1 || MAP[gridY2]?.[gridX2] === 1) {
+                return true;
+            }
+            return false;
         }
 
-        function stopGame() {
-            if (unsubPlayers) unsubPlayers();
-            if (unsubBullets) unsubBullets();
-            unsubPlayers = null;
-            unsubBullets = null;
-            localPlayer = null;
-            players = {};
-            bullets = {};
-
-            joinScreen.classList.remove('hidden');
-            canvas.classList.add('hidden');
-            playerInfo.classList.add('hidden');
-            sessionInfo.classList.add('hidden');
-            leaderboardContainer.classList.add('hidden');
-            deathMessage.classList.add('hidden');
-        }
-
-        function respawn() {
-            if (!localPlayer) return;
-            localPlayer.x = Math.random() * 1000;
-            localPlayer.y = Math.random() * 1000;
-            localPlayer.health = MAX_HEALTH;
-            localPlayer.isDead = false;
-
-            updateDoc(doc(playersCollection, localPlayer.id), {
-                x: localPlayer.x,
-                y: localPlayer.y,
-                health: localPlayer.health,
-                isDead: localPlayer.isDead
-            });
-
-            deathMessage.classList.add('hidden');
-            playerInfo.classList.remove('hidden');
-        }
-
-        function handleInput() {
+        function handleInput(joystickInput = {dx: 0, dy: 0}) {
             if (!localPlayer || localPlayer.isDead) return;
 
-            let dx = 0;
-            let dy = 0;
+            let dx = joystickInput.dx;
+            let dy = joystickInput.dy;
 
-            if (keys['w'] || keys['W'] || keys['ArrowUp']) dy -= 1;
-            if (keys['s'] || keys['S'] || keys['ArrowDown']) dy += 1;
-            if (keys['a'] || keys['A'] || keys['ArrowLeft']) dx -= 1;
-            if (keys['d'] || keys['D'] || keys['ArrowRight']) dx += 1;
+            if (!isMobile) {
+                if (keys['w'] || keys['W'] || keys['ArrowUp']) dy -= 1;
+                if (keys['s'] || keys['S'] || keys['ArrowDown']) dy += 1;
+                if (keys['a'] || keys['A'] || keys['ArrowLeft']) dx -= 1;
+                if (keys['d'] || keys['D'] || keys['ArrowRight']) dx += 1;
+            }
 
             if (dx !== 0 || dy !== 0) {
-                const mag = Math.sqrt(dx*dx + dy*dy);
-                localPlayer.x += (dx / mag) * TANK_SPEED;
-                localPlayer.y += (dy / mag) * TANK_SPEED;
-            }
-
-            const playerScreenX = localPlayer.x - camera.x + canvas.width / 2;
-            const playerScreenY = localPlayer.y - camera.y + canvas.height / 2;
-            localPlayer.angle = Math.atan2(mouse.y - playerScreenY, mouse.x - playerScreenX);
-        }
-        
-        function updateGameState() {
-            if (!localPlayer || localPlayer.isDead) return;
-
-            updateDoc(doc(playersCollection, localPlayer.id), {
-                x: localPlayer.x,
-                y: localPlayer.y,
-                angle: localPlayer.angle,
-                lastSeen: serverTimestamp()
-            });
-
-            camera.x = localPlayer.x;
-            camera.y = localPlayer.y;
-
-            for (const bulletId in bullets) {
-                const bullet = bullets[bulletId];
-                if (bullet.ownerId === localPlayer.id) continue;
-
-                const distance = Math.hypot(localPlayer.x - bullet.x, localPlayer.y - bullet.y);
-                if (distance < TANK_SIZE / 2 + BULLET_SIZE / 2) {
-                    takeDamage(10, bullet.ownerId);
-                    deleteDoc(doc(bulletsCollection, bulletId));
-                    break; 
+                const mag = Math.sqrt(dx * dx + dy * dy);
+                const moveX = localPlayer.x + (dx / mag) * TANK_SPEED;
+                const moveY = localPlayer.y + (dy / mag) * TANK_SPEED;
+                
+                // Movimiento con colisión de paredes (deslizamiento)
+                if (!checkWallCollision(moveX, localPlayer.y, TANK_SIZE)) {
+                    localPlayer.x = moveX;
+                }
+                if (!checkWallCollision(localPlayer.x, moveY, TANK_SIZE)) {
+                    localPlayer.y = moveY;
                 }
             }
-        }
 
-        function updateBullets() {
-            const now = Date.now();
-            for (const id in bullets) {
-                const bullet = bullets[id];
-
-                // Mover la bala
-                bullet.x += bullet.vx;
-                bullet.y += bullet.vy;
-
-                // Comprobar la vida útil (4 segundos)
-                if (bullet.createdAt && typeof bullet.createdAt.toMillis === 'function') {
-                    const bulletAge = now - bullet.createdAt.toMillis();
-                    if (bulletAge > 4000) {
-                        deleteDoc(doc(bulletsCollection, id));
-                    }
-                }
+            if (!isMobile) {
+                const playerScreenX = localPlayer.x - camera.x + canvas.width / 2;
+                const playerScreenY = localPlayer.y - camera.y + canvas.height / 2;
+                localPlayer.angle = Math.atan2(mouse.y - playerScreenY, mouse.x - playerScreenX);
             }
         }
-        
+
         function takeDamage(amount, attackerId) {
             if (!localPlayer || localPlayer.isDead) return;
-            
+            const attacker = players[attackerId];
+            if (!attacker || attacker.team === localPlayer.team) return; // No hay fuego amigo
+
             localPlayer.health -= amount;
             updateUI();
 
@@ -353,42 +369,105 @@
                 localPlayer.isDead = true;
                 playerDied(attackerId);
             }
-             updateDoc(doc(playersCollection, localPlayer.id), { health: localPlayer.health, isDead: localPlayer.isDead });
+            updateDoc(doc(playersCollection, localPlayer.id), { health: localPlayer.health, isDead: localPlayer.isDead });
         }
 
-        function playerDied(killerId) {
+        async function playerDied(killerId) {
              playerInfo.classList.add('hidden');
              deathMessage.classList.remove('hidden');
              
-             if (killerId && players[killerId] && killerId !== localPlayer.id) {
-                 const newScore = (players[killerId].score || 0) + 1;
+             const killer = players[killerId];
+             if (killer && killerId !== localPlayer.id) {
+                 const newScore = (killer.score || 0) + 1;
                  updateDoc(doc(playersCollection, killerId), { score: newScore });
+
+                 // Actualizar puntuación del equipo
+                 const teamToUpdate = killer.team === 'red' ? 'red' : 'blue';
+                 const currentScores = (await getDoc(gameStateRef)).data();
+                 const newTeamScore = (currentScores[teamToUpdate] || 0) + 1;
+                 await updateDoc(gameStateRef, { [teamToUpdate]: newTeamScore });
              }
         }
-
-        // --- Funciones de Dibujo ---
-        function draw() {
+        
+        function respawn() {
             if (!localPlayer) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y);
-            
-            drawGrid();
+            const spawnPoint = getSpawnPoint();
+            localPlayer.x = spawnPoint.x;
+            localPlayer.y = spawnPoint.y;
+            localPlayer.health = MAX_HEALTH;
+            localPlayer.isDead = false;
 
-            for (const id in bullets) {
-                drawBullet(bullets[id]);
-            }
-
-            const sortedPlayers = Object.values(players).sort((a,b) => a.y - b.y);
-            sortedPlayers.forEach(player => {
-                if(!player.isDead) {
-                    drawTank(player);
-                }
+            updateDoc(doc(playersCollection, localPlayer.id), {
+                x: localPlayer.x, y: localPlayer.y, health: localPlayer.health, isDead: localPlayer.isDead
             });
 
-            ctx.restore();
+            deathMessage.classList.add('hidden');
+            playerInfo.classList.remove('hidden');
         }
-        
+
+        // Dibujar mapa
+        function drawMap() {
+            for (let y = 0; y < MAP.length; y++) {
+                for (let x = 0; x < MAP[y].length; x++) {
+                    if (MAP[y][x] === 1) {
+                        ctx.fillStyle = "#a0aec0"; // Color de pared
+                        ctx.fillRect(x * MAP_TILE_SIZE, y * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE);
+                    }
+                }
+            }
+        }
+
+        // Bucle de juego
+        let lastUpdateTime = 0;
+        let animationFrameId;
+        function gameLoop(timestamp) {
+            if (!localPlayer) return;
+            
+            if (timestamp - lastUpdateTime > 1000 / 20) {
+                 if(!localPlayer.isDead) updateGameState();
+                 lastUpdateTime = timestamp;
+            }
+
+            updatePlayersInterpolation();
+            updateBullets();
+            draw();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // Interpolación para movimiento suave
+        function updatePlayersInterpolation() {
+            for(const id in players) {
+                const p = players[id];
+                if(id === localPlayer?.id) continue;
+                if(p.targetX) {
+                    p.x += (p.targetX - p.x) * 0.2;
+                    p.y += (p.targetY - p.y) * 0.2;
+                }
+            }
+        }
+
+        function updateBullets() {
+            for (const id in bullets) {
+                const bullet = bullets[id];
+                bullet.x += bullet.vx;
+                bullet.y += bullet.vy;
+
+                // Colisión de balas con paredes
+                if (checkWallCollision(bullet.x, bullet.y, BULLET_SIZE)) {
+                    deleteDoc(doc(bulletsCollection, id));
+                    continue;
+                }
+                
+                const now = Date.now();
+                if (bullet.createdAt && typeof bullet.createdAt.toMillis === 'function') {
+                    const bulletAge = now - bullet.createdAt.toMillis();
+                    if (bulletAge > 4000) {
+                        deleteDoc(doc(bulletsCollection, id));
+                    }
+                }
+            }
+        }
+
         function drawGrid() {
             const gridSize = 50;
             ctx.strokeStyle = "#4a5568";
@@ -411,20 +490,37 @@
             }
         }
 
+        function draw() {
+            if (!localPlayer) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y);
+            
+            drawGrid();
+            drawMap();
+
+            for (const id in bullets) { drawBullet(bullets[id]); }
+            const sortedPlayers = Object.values(players).sort((a,b) => a.y - b.y);
+            sortedPlayers.forEach(player => { if(!player.isDead) drawTank(player); });
+
+            ctx.restore();
+        }
+
         function drawTank(player) {
             ctx.save();
             ctx.translate(player.x, player.y);
             
+            ctx.fillStyle = player.team === 'red' ? '#ef4444' : '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(0, 0, TANK_SIZE / 2, 0, Math.PI * 2);
+            ctx.fill();
+
             ctx.save();
             ctx.rotate(player.angle);
             ctx.fillStyle = "#a0aec0";
             ctx.fillRect(0, -TURRET_WIDTH / 2, TURRET_LENGTH, TURRET_WIDTH);
             ctx.restore();
 
-            ctx.fillStyle = player.color;
-            ctx.beginPath();
-            ctx.arc(0, 0, TANK_SIZE / 2, 0, Math.PI * 2);
-            ctx.fill();
             ctx.strokeStyle = "#4a5568";
             ctx.lineWidth = 3;
             ctx.stroke();
@@ -434,155 +530,208 @@
             ctx.textAlign = "center";
             ctx.fillText(player.name, 0, -TANK_SIZE / 2 - 15);
             
-            if (player.health < MAX_HEALTH) {
+             if (player.health < MAX_HEALTH) {
                 ctx.fillStyle = "black";
                 ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2 - 10, TANK_SIZE, 8);
-                ctx.fillStyle = "red";
+                const healthColor = player.health > MAX_HEALTH * 0.3 ? 'lime' : 'red';
+                ctx.fillStyle = healthColor;
                 ctx.fillRect(-TANK_SIZE / 2 + 1, -TANK_SIZE / 2 - 9, (TANK_SIZE - 2) * (player.health / MAX_HEALTH), 6);
             }
 
             ctx.restore();
         }
-
-        function drawBullet(bullet) {
-            ctx.fillStyle = "#f56565";
-            ctx.beginPath();
-            ctx.arc(bullet.x, bullet.y, BULLET_SIZE / 2, 0, Math.PI * 2);
-            ctx.fill();
+        
+        function drawBullet(b) { 
+            ctx.fillStyle = "#f56565"; 
+            ctx.beginPath(); 
+            ctx.arc(b.x, b.y, BULLET_SIZE / 2, 0, Math.PI * 2); 
+            ctx.fill(); 
         }
 
         function updateUI() {
              if (!localPlayer) return;
              document.getElementById('health-bar').style.width = `${(localPlayer.health / MAX_HEALTH) * 100}%`;
              document.getElementById('score-display').textContent = localPlayer.score;
+             document.getElementById('blue-score').textContent = `Azul: ${teamScores.blue || 0}`;
+             document.getElementById('red-score').textContent = `Rojo: ${teamScores.red || 0}`;
 
-             const sortedPlayers = Object.values(players)
-                .filter(p => p.score !== undefined)
-                .sort((a,b) => b.score - a.score)
-                .slice(0, 5);
+             // ... (actualización del marcador)
+        }
 
-             const leaderboardList = document.getElementById('leaderboard-list');
-             leaderboardList.innerHTML = '';
-             sortedPlayers.forEach(p => {
-                 const li = document.createElement('li');
-                 li.className = 'flex justify-between py-1';
-                 li.innerHTML = `<span>${p.name}</span><span>${p.score}</span>`;
-                 leaderboardList.appendChild(li);
-             });
+        // Controles Móviles
+        let joystickInput = { dx: 0, dy: 0 };
+        function setupMobileControls() {
+            let touchId = null;
+            let startPos = { x: 0, y: 0 };
+            
+            // Lado izquierdo para mover (Joystick)
+            canvas.addEventListener('touchstart', (e) => {
+                for (const touch of e.changedTouches) {
+                    if (touch.clientX < window.innerWidth / 2 && touchId === null) {
+                        touchId = touch.identifier;
+                        joystickContainer.style.left = `${touch.clientX - 60}px`;
+                        joystickContainer.style.top = `${touch.clientY - 60}px`;
+                        startPos = { x: touch.clientX, y: touch.clientY };
+                    }
+                }
+                e.preventDefault();
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                for (const touch of e.changedTouches) {
+                    if (touch.identifier === touchId) {
+                        const dx = touch.clientX - startPos.x;
+                        const dy = touch.clientY - startPos.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        const angle = Math.atan2(dy, dx);
+                        
+                        const maxDist = 40;
+                        const clampedDist = Math.min(dist, maxDist);
+                        
+                        joystickThumb.style.transform = `translate(${Math.cos(angle) * clampedDist}px, ${Math.sin(angle) * clampedDist}px)`;
+                        
+                        joystickInput.dx = dx / maxDist;
+                        joystickInput.dy = dy / maxDist;
+                    }
+                }
+                e.preventDefault();
+            }, { passive: false });
+            
+            canvas.addEventListener('touchend', (e) => {
+                for (const touch of e.changedTouches) {
+                    if (touch.identifier === touchId) {
+                        touchId = null;
+                        joystickThumb.style.transform = `translate(0px, 0px)`;
+                        joystickInput = { dx: 0, dy: 0 };
+                    }
+                }
+            });
+
+            // Lado derecho para apuntar y disparar
+            canvas.addEventListener('pointerdown', (e) => {
+                if (e.clientX > window.innerWidth / 2 && localPlayer && !localPlayer.isDead) {
+                    const playerScreenX = localPlayer.x - camera.x + canvas.width / 2;
+                    const playerScreenY = localPlayer.y - camera.y + canvas.height / 2;
+                    localPlayer.angle = Math.atan2(e.clientY - playerScreenY, e.clientX - playerScreenX);
+                    shoot();
+                }
+            });
+
+            // Loop de input para el joystick
+            setInterval(() => {
+                if (localPlayer) handleInput(joystickInput);
+            }, 1000/60);
+        }
+
+        // Lógica de Chat
+        async function sendChatMessage() {
+            const text = chatInput.value.trim();
+            if (text && localPlayer) {
+                await addDoc(chatCollection, {
+                    name: localPlayer.name,
+                    team: localPlayer.team,
+                    text: text,
+                    createdAt: serverTimestamp()
+                });
+                chatInput.value = '';
+            }
         }
         
-        // --- Bucle Principal y Eventos ---
-        let lastUpdateTime = 0;
-        let animationFrameId;
-        function gameLoop(timestamp) {
-            if (!localPlayer) return;
-
-            if (!localPlayer.isDead) {
-                handleInput();
-                 if (timestamp - lastUpdateTime > 1000 / 20) {
-                     updateGameState();
-                     lastUpdateTime = timestamp;
-                 }
-            }
-            updateBullets(); // Mover y gestionar balas en cada frame
-            draw();
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-
-        function shoot() {
-             if (!localPlayer || localPlayer.isDead) return;
-
-             const bulletId = doc(collection(db, 'dummy')).id;
-             const newBullet = {
-                 id: bulletId,
-                 ownerId: localPlayer.id,
-                 x: localPlayer.x + Math.cos(localPlayer.angle) * TURRET_LENGTH,
-                 y: localPlayer.y + Math.sin(localPlayer.angle) * TURRET_LENGTH,
-                 vx: Math.cos(localPlayer.angle) * BULLET_SPEED,
-                 vy: Math.sin(localPlayer.angle) * BULLET_SPEED,
-                 createdAt: serverTimestamp()
-             };
-             
-             setDoc(doc(bulletsCollection, bulletId), newBullet);
-        }
-
-        // --- Inicialización y Listeners de Firebase ---
         function init() {
+            detectDevice();
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
-
-            window.addEventListener('keydown', (e) => { keys[e.key] = true; });
-            window.addEventListener('keyup', (e) => { keys[e.key] = false; });
-            canvas.addEventListener('mousemove', (e) => {
-                const rect = canvas.getBoundingClientRect();
-                mouse.x = e.clientX - rect.left;
-                mouse.y = e.clientY - rect.top;
-            });
-
-            let shootTimeout;
-            canvas.addEventListener('mousedown', () => {
-                shoot();
-                shootTimeout = setInterval(shoot, 150);
-            });
-            canvas.addEventListener('mouseup', () => {
-                clearInterval(shootTimeout);
-            });
-            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-
-            loginRegisterButton.addEventListener('click', handleLoginRegister);
-            respawnButton.addEventListener('click', respawn);
-            logoutButton.addEventListener('click', () => signOut(auth));
+            
+            if (!isMobile) {
+                window.addEventListener('keydown', (e) => { keys[e.key] = true; });
+                window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+                canvas.addEventListener('mousemove', (e) => {
+                    mouse.x = e.clientX;
+                    mouse.y = e.clientY;
+                });
+                let shootTimeout;
+                canvas.addEventListener('mousedown', () => { shoot(); shootTimeout = setInterval(shoot, 150); });
+                canvas.addEventListener('mouseup', () => { clearInterval(shootTimeout); });
+                setInterval(() => handleInput(), 1000/60); // Loop de input para PC
+            }
+            
+            chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatMessage(); });
 
             onAuthStateChanged(auth, (user) => {
+                unsubscribes.forEach(unsub => unsub());
+                unsubscribes = [];
+
                 if (user) {
                     console.log("Usuario autenticado:", user.uid);
                     
-                    if (unsubPlayers) unsubPlayers();
-                    unsubPlayers = onSnapshot(playersCollection, (snapshot) => {
+                    const unsubPlayers = onSnapshot(playersCollection, (snapshot) => {
                         let playerExists = false;
                         snapshot.docChanges().forEach((change) => {
-                            const playerData = change.doc.data();
-                            if (change.doc.id === user.uid) playerExists = true;
-
-                            if (change.type === "added" || change.type === "modified") {
-                                players[change.doc.id] = { id: change.doc.id, ...playerData };
-                                if(localPlayer && change.doc.id === localPlayer.id) {
-                                    Object.assign(localPlayer, playerData);
-                                    if(localPlayer.isDead && !deathMessage.classList.contains('hidden')) {
-                                         playerInfo.classList.add('hidden');
-                                    } else if (!localPlayer.isDead && deathMessage.classList.contains('hidden')) {
-                                         playerInfo.classList.remove('hidden');
-                                    }
-                                    updateUI();
-                                }
-                            } else if (change.type === "removed") {
-                                delete players[change.doc.id];
-                            }
-                        });
-                        if(playerExists && !localPlayer) {
-                            startGame(players[user.uid]);
-                        }
-                        updateUI();
-                    });
-
-                    if (unsubBullets) unsubBullets();
-                    unsubBullets = onSnapshot(bulletsCollection, (snapshot) => {
-                        snapshot.docChanges().forEach((change) => {
-                            const bulletData = change.doc.data();
+                            const data = change.doc.data();
                             const id = change.doc.id;
+                            if (id === user.uid) playerExists = true;
                             
                             if (change.type === "added") {
-                                // Añade nuevas balas a nuestro estado de juego local
-                                if (!bullets[id]) {
-                                    bullets[id] = { id, ...bulletData };
+                                players[id] = { id, ...data };
+                            } else if (change.type === "modified") {
+                                if(players[id]) {
+                                    players[id].targetX = data.x;
+                                    players[id].targetY = data.y;
+                                    players[id].angle = data.angle;
+                                    Object.assign(players[id], data); 
                                 }
+                            } else if (change.type === "removed") {
+                                delete players[id];
                             }
-                            if (change.type === "removed") {
-                                // Elimina las balas de nuestro estado de juego local
-                                delete bullets[id];
+                        });
+                        if(playerExists && !localPlayer) startGame(players[user.uid]);
+                        updateUI();
+                    });
+                    unsubscribes.push(unsubPlayers);
+
+                    const unsubBullets = onSnapshot(bulletsCollection, (snapshot) => {
+                        snapshot.docChanges().forEach((change) => {
+                            if (change.type === "added") {
+                                if (!bullets[change.doc.id]) bullets[change.doc.id] = { id: change.doc.id, ...change.doc.data() };
+                            } else if (change.type === "removed") {
+                                delete bullets[change.doc.id];
                             }
                         });
                     });
+                    unsubscribes.push(unsubBullets);
+                    
+                    const unsubScores = onSnapshot(gameStateRef, (doc) => {
+                        if (doc.exists()) teamScores = doc.data();
+                        updateUI();
+                    });
+                    unsubscribes.push(unsubScores);
+
+                    const q = query(chatCollection, orderBy("createdAt", "desc"), limit(20));
+                    const unsubChat = onSnapshot(q, (snapshot) => {
+                        chatMessages.innerHTML = '';
+                        snapshot.docs.reverse().forEach(doc => {
+                            const msg = doc.data();
+                            const msgEl = document.createElement('div');
+                            const nameColor = msg.team === 'red' ? 'text-red-400' : 'text-blue-400';
+                            msgEl.innerHTML = `<strong class="${nameColor}">${msg.name}:</strong> ${msg.text}`;
+                            chatMessages.appendChild(msgEl);
+                        });
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    });
+                    unsubscribes.push(unsubChat);
+                    
+                    setInterval(async () => {
+                        const snapshot = await getDocs(playersCollection);
+                        snapshot.forEach(doc => {
+                            const playerData = doc.data();
+                            if (playerData.lastSeen) {
+                                const age = Date.now() - playerData.lastSeen.toMillis();
+                                if (age > 20000) { // 20 segundos
+                                    deleteDoc(doc.ref);
+                                }
+                            }
+                        });
+                    }, 15000);
 
                 } else {
                     console.log("Usuario no autenticado.");
@@ -590,9 +739,95 @@
                     if(animationFrameId) cancelAnimationFrame(animationFrameId);
                 }
             });
+            loginRegisterButton.addEventListener('click', handleLoginRegister);
+            respawnButton.addEventListener('click', respawn);
+            logoutButton.addEventListener('click', () => signOut(auth));
         }
         
         init();
+        
+        async function handleLoginRegister() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            authError.textContent = '';
+
+            if (!username || !password) {
+                authError.textContent = 'Por favor, ingresa usuario y contraseña.'; return;
+            }
+            if (password.length < 6) {
+                authError.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return;
+            }
+            const email = `${username.replace(/\s+/g, '_')}@tanksgame.io`;
+
+            try { await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                    try {
+                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                        await createPlayerDocument(userCredential.user, username);
+                    } catch (registerError) { authError.textContent = 'No se pudo registrar. Intenta con otro nombre.'; }
+                } else { authError.textContent = 'Error al iniciar sesión. Verifica tus datos.'; }
+            }
+        }
+
+        function startGame(playerData) {
+            localPlayer = playerData;
+            players[localPlayer.id] = localPlayer;
+            joinScreen.classList.add('hidden');
+            canvas.classList.remove('hidden');
+            playerInfo.classList.remove('hidden');
+            sessionInfo.classList.remove('hidden');
+            leaderboardContainer.classList.remove('hidden');
+            document.getElementById('player-name-display').textContent = localPlayer.name;
+            playerIdDisplay.textContent = localPlayer.id;
+            updateUI();
+            if(animationFrameId) cancelAnimationFrame(animationFrameId);
+            gameLoop();
+        }
+
+        function stopGame() {
+            if (unsubscribes) unsubscribes.forEach(unsub => unsub());
+            localPlayer = null; players = {}; bullets = {};
+            joinScreen.classList.remove('hidden');
+            canvas.classList.add('hidden');
+            playerInfo.classList.add('hidden');
+            sessionInfo.classList.add('hidden');
+            leaderboardContainer.classList.add('hidden');
+            deathMessage.classList.add('hidden');
+        }
+
+        function shoot() {
+             if (!localPlayer || localPlayer.isDead) return;
+             const bulletId = doc(collection(db, 'dummy')).id;
+             const newBullet = {
+                 id: bulletId, ownerId: localPlayer.id,
+                 x: localPlayer.x + Math.cos(localPlayer.angle) * TURRET_LENGTH,
+                 y: localPlayer.y + Math.sin(localPlayer.angle) * TURRET_LENGTH,
+                 vx: Math.cos(localPlayer.angle) * BULLET_SPEED,
+                 vy: Math.sin(localPlayer.angle) * BULLET_SPEED,
+                 createdAt: serverTimestamp()
+             };
+             setDoc(doc(bulletsCollection, bulletId), newBullet);
+        }
+        
+        function updateGameState() {
+            if (!localPlayer || localPlayer.isDead) return;
+            updateDoc(doc(playersCollection, localPlayer.id), {
+                x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle, lastSeen: serverTimestamp()
+            });
+            camera.x = localPlayer.x;
+            camera.y = localPlayer.y;
+            for (const bulletId in bullets) {
+                const bullet = bullets[bulletId];
+                if (bullet.ownerId === localPlayer.id) continue;
+                const distance = Math.hypot(localPlayer.x - bullet.x, localPlayer.y - bullet.y);
+                if (distance < TANK_SIZE / 2 + BULLET_SIZE / 2) {
+                    takeDamage(10, bullet.ownerId);
+                    deleteDoc(doc(bulletsCollection, bulletId));
+                    break;
+                }
+            }
+        }
     </script>
 </body>
 </html>
