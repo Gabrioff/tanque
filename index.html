@@ -1,922 +1,240 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Tanques Multijugador</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BNBRUN - The Race To The Moon</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        @keyframes backgroundPan {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% {
+                box-shadow: 0 0 10px #facc15, 0 0 25px #facc15, 0 0 5px #fff;
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 0 20px #fde047, 0 0 45px #fde047, 0 0 10px #fff;
+                transform: scale(1.05);
+            }
+        }
+        
+        @keyframes textGlow {
+             0%, 100% {
+                text-shadow: 3px 3px 0px rgba(0,0,0,0.6), 0 0 10px #fde047;
+            }
+            50% {
+                 text-shadow: 3px 3px 0px rgba(0,0,0,0.6), 0 0 20px #facc15;
+            }
+        }
+
         body {
             font-family: 'Inter', sans-serif;
+            color: #f0f0f0;
+            background: linear-gradient(225deg, #0c1a0f, #1a3a1f, #0a2d14, #27522d);
+            background-size: 300% 300%;
+            animation: backgroundPan 25s ease infinite;
+            overflow-x: hidden;
+        }
+        .font-bangers {
+            font-family: 'Bangers', cursive;
+        }
+        .text-shadow-custom {
+            text-shadow: 3px 3px 0px rgba(0,0,0,0.6);
+            animation: textGlow 4s infinite ease-in-out;
+        }
+        .card-bg {
+            background-color: rgba(16, 46, 23, 0.75);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .btn-glow {
+            box-shadow: 0 0 8px #fbbf24, 0 0 20px #fbbf24;
+            transition: all 0.3s ease-in-out;
+            animation: pulseGlow 3s infinite ease-in-out;
+        }
+        .btn-glow:hover {
+            box-shadow: 0 0 14px #fde047, 0 0 35px #fde047;
+        }
+        .character-card {
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+            border-radius: 1.5rem;
+            position: relative;
             overflow: hidden;
-            background-color: #1a202c; /* bg-gray-900 */
         }
-        .game-title {
-            font-family: 'Bungee', cursive;
+        .character-card:hover {
+            transform: translateY(-15px) scale(1.03);
+            box-shadow: 0 20px 40px rgba(251, 191, 36, 0.3);
         }
-        canvas {
-            background-color: #2d3748; /* bg-gray-800 */
-            cursor: crosshair;
-            display: block;
-        }
-        #ui-container {
+        .character-card::before {
+            content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 1.5rem;
+            border: 2px solid transparent;
+            background: linear-gradient(45deg, #fde047, #fbbf24) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
         }
-        .ui-element {
-            pointer-events: auto;
+        .character-card:hover::before {
+            opacity: 1;
         }
-        #join-screen {
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://placehold.co/1920x1080/1a202c/2d3748?text=.');
-            background-size: cover;
-            pointer-events: auto;
+        .contract-box {
+            background-color: rgba(0,0,0,0.4);
+            border: 1px solid rgba(251, 191, 36, 0.5);
+            transition: all 0.3s ease;
         }
-        /* Estilos del Chat */
-        #chat-container {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            width: 320px;
-            height: 220px;
-            background-color: rgba(26, 32, 44, 0.7);
-            backdrop-filter: blur(5px);
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            pointer-events: auto;
-            border: 1px solid rgba(255,255,255,0.1);
+        .contract-box:hover {
+            border-color: rgba(251, 191, 36, 0.8);
         }
-        #chat-messages {
-            flex-grow: 1;
-            padding: 10px;
-            overflow-y: auto;
-            color: white;
-            font-size: 14px;
-            scrollbar-width: thin;
-            scrollbar-color: #4A5568 #2D3748;
+        .copy-btn {
+             background-color: #fbbf24;
+             color: #1a3a1f;
+             transition: all 0.2s ease;
         }
-        #chat-input-area {
-            display: flex;
-            border-top: 1px solid rgba(255,255,255,0.1);
+        .copy-btn:hover {
+            background-color: #fde047;
+            transform: scale(1.1);
         }
-        #chat-input {
-            padding: 8px;
-            background: transparent;
-            color: white;
-            flex-grow: 1;
-            border: none;
-            outline: none;
+        .animated-section {
+            opacity: 0;
+            animation: fadeInUp 1s ease-out forwards;
         }
-        #send-chat-button {
-            background-color: #2b6cb0;
-            color: white;
-            border: none;
-            padding: 0 15px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        #send-chat-button:hover { background-color: #2c5282; }
-
-        /* Estilos del Joystick Virtual */
-        #joystick-container {
-            position: absolute;
-            bottom: 50px;
-            left: 50px;
-            width: 120px;
-            height: 120px;
-            display: none; /* Oculto por defecto */
-        }
-        #joystick-base {
-            position: absolute;
-            width: 120px;
-            height: 120px;
-            background: rgba(100, 100, 100, 0.4);
-            border-radius: 50%;
-        }
-        #joystick-thumb {
-            position: absolute;
-            width: 60px;
-            height: 60px;
-            background: rgba(200, 200, 200, 0.6);
-            border-radius: 50%;
-            top: 30px;
-            left: 30px;
-        }
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.4s; }
+        .delay-3 { animation-delay: 0.6s; }
+        .delay-4 { animation-delay: 0.8s; }
     </style>
 </head>
-<body class="w-screen h-screen">
+<body class="min-h-screen">
 
-    <canvas id="gameCanvas" class="hidden"></canvas>
-    
-    <div id="joystick-container">
-        <div id="joystick-base"></div>
-        <div id="joystick-thumb"></div>
-    </div>
+    <!-- Header Section -->
+    <header class="py-6 px-4 text-center">
+        <div class="container mx-auto animated-section">
+            <h1 class="font-bangers text-7xl md:text-9xl text-amber-300 text-shadow-custom tracking-wider">BNBRUN</h1>
+            <p class="mt-2 text-xl md:text-2xl text-gray-200 animate-pulse">The race for BNB has begun!</p>
+        </div>
+    </header>
 
-    <div id="ui-container" class="p-4 md:p-6 flex flex-col justify-between h-full">
-        <!-- Parte superior: Información, Puntuaciones, Marcador -->
-        <div class="flex justify-between items-start text-white w-full gap-4">
-            <div id="player-info" class="hidden bg-gray-800 bg-opacity-70 p-3 rounded-lg shadow-lg min-w-[200px]">
-                <h2 id="player-name-display" class="text-xl font-bold truncate"></h2>
-                <div class="w-full bg-gray-600 rounded-full h-2.5 mt-2">
-                    <div id="health-bar" class="bg-green-500 h-2.5 rounded-full transition-all duration-300"></div>
+    <!-- Hero Section -->
+    <main class="container mx-auto px-4 py-8">
+        <section class="text-center animated-section delay-1">
+            <div class="max-w-4xl mx-auto card-bg p-8 shadow-2xl">
+                <img src="https://i.postimg.cc/4Ndb7XQb/photo-2025-09-21-14-43-10.jpg" alt="BNBRUN Team" class="rounded-xl mx-auto mb-8 border-2 border-amber-400 shadow-lg">
+                <h2 class="font-bangers text-4xl text-amber-300 mb-4">Join the Stampede</h2>
+                <p class="text-lg text-gray-300 mb-8">
+                    In the wild world of memecoins, only the fastest and boldest survive. BNBRUN isn't just a token; it's a movement. A frantic race led by a team of unlikely legends with one goal: to reach the top with their bags full of BNB!
+                </p>
+
+                <!-- Contract Address Section -->
+                <div class="mt-10">
+                     <h3 class="font-bangers text-3xl text-amber-300 mb-4">Official Contract</h3>
+                     <div class="contract-box max-w-lg mx-auto p-3 rounded-full flex items-center justify-between">
+                         <input id="contractAddress" type="text" readonly value="CA: BnbRuN123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" class="bg-transparent text-gray-300 text-sm md:text-base flex-grow outline-none px-4 truncate">
+                         <button id="copyButton" class="copy-btn font-bold py-2 px-5 rounded-full text-lg">
+                             Copy
+                         </button>
+                     </div>
+                     <p id="copy-success" class="text-green-400 mt-2 h-4 transition-opacity duration-300"></p>
                 </div>
-                <p class="text-lg mt-1">Puntuación: <span id="score-display">0</span></p>
-                <button id="logout-button" class="ui-element mt-3 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 text-sm">
-                    Cerrar Sesión
-                </button>
+
+                <a href="https://pump.fun/" target="_blank" rel="noopener noreferrer" class="inline-block bg-amber-400 text-gray-900 font-bold py-4 px-10 rounded-full text-xl font-bangers tracking-wider btn-glow mt-6">
+                    Buy on Pump.fun
+                </a>
             </div>
-             <div id="team-scores" class="flex-grow flex justify-center items-center gap-8 text-3xl font-bold game-title text-shadow">
-                 <span id="blue-score" class="text-blue-400">Azul: 0</span>
-                 <span id="red-score" class="text-red-400">Rojo: 0</span>
-             </div>
-             <div id="leaderboard-container" class="self-start hidden">
-                <div id="leaderboard" class="bg-gray-800 bg-opacity-70 p-4 rounded-lg shadow-lg w-64">
-                    <h3 class="text-lg font-bold text-white border-b border-gray-600 pb-2 mb-2">Marcador</h3>
-                    <ul id="leaderboard-list" class="text-white"></ul>
+        </section>
+
+        <!-- Characters Section -->
+        <section class="py-16 md:py-24 animated-section delay-2">
+            <h2 class="font-bangers text-5xl md:text-6xl text-center mb-12 text-amber-300 text-shadow-custom">Meet the Runners</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 max-w-6xl mx-auto">
+
+                <!-- Character Card 1: Sergeant Bob -->
+                <div class="character-card card-bg p-6 text-center shadow-lg flex flex-col items-center animated-section delay-2">
+                    <img src="https://i.pinimg.com/originals/df/d8/45/dfd8455ba61df0d68c662074ffc81ff9.jpg" alt="Sergeant Bob" class="w-48 h-48 rounded-full mx-auto mb-4 border-4 border-amber-400 object-cover">
+                    <h3 class="font-bangers text-3xl text-amber-300">Sergeant Bob</h3>
+                    <p class="text-gray-300 mt-2">A veteran of a thousand crypto battles. With his steel helmet and diamond hands, he has survived every nuclear winter. He leads the charge against the market bears, defending the BNBRUN community with courage and memes.</p>
+                </div>
+
+                <!-- Character Card 2: Patrick, the Titan -->
+                <div class="character-card card-bg p-6 text-center shadow-lg flex flex-col items-center animated-section delay-3">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjHQbVU-aUKCx-HJss9UhhjkRARVDSM3Br2A&s" alt="Patrick, the Titan" class="w-48 h-48 rounded-full mx-auto mb-4 border-4 border-amber-400 object-cover">
+                    <h3 class="font-bangers text-3xl text-amber-300">Patrick, the Titan</h3>
+                    <p class="text-gray-300 mt-2">A pink giant with a simple strategy: buy everything. He believes BNBs are candy and is building a mountain for an eternal party. His motto is "HODL," even if he doesn't quite know what it means.</p>
+                </div>
+
+                <!-- Character Card 3: Armstrong Muscles -->
+                <div class="character-card card-bg p-6 text-center shadow-lg flex flex-col items-center animated-section delay-4">
+                    <img src="https://s3.coinmarketcap.com/static-gravity/image/343d5d7793e54529a0c3a346241b5766.jpeg" alt="Armstrong Muscles" class="w-48 h-48 rounded-full mx-auto mb-4 border-4 border-amber-400 object-cover">
+                    <h3 class="font-bangers text-3xl text-amber-300">Armstrong Muscles</h3>
+                    <p class="text-gray-300 mt-2">The protector of the portfolio. Each of his muscles is a fortress against FUD and volatility. His strength is legendary, and his portfolio has been passed down through generations of Armstrong investors!</p>
                 </div>
             </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-black bg-opacity-40 py-8 text-center border-t border-amber-400 border-opacity-20">
+        <div class="container mx-auto">
+            <h3 class="font-bangers text-3xl text-amber-300 mb-4">Join our community</h3>
+            <div class="flex justify-center space-x-6 mb-6">
+                <a href="#" target="_blank" class="text-gray-300 hover:text-amber-300 transition-all duration-300 hover:scale-110">
+                    <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.71v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"/></svg>
+                </a>
+            </div>
+            <p class="text-gray-400">&copy; 2024 BNBRUN. All rights reserved. Run, or get left behind.</p>
         </div>
-        
-        <!-- Parte inferior: Chat -->
-        <div class="flex justify-between items-end">
-             <div id="chat-container">
-                <div id="chat-messages"></div>
-                <div id="chat-input-area">
-                    <input type="text" id="chat-input" placeholder="Escribe un mensaje..." class="ui-element">
-                    <button id="send-chat-button" class="ui-element">Enviar</button>
-                </div>
-             </div>
-        </div>
-    </div>
+    </footer>
 
-    <!-- Pantalla para unirse al juego -->
-    <div id="join-screen" class="absolute inset-0 flex items-center justify-center">
-        <div class="bg-gray-900 bg-opacity-80 backdrop-filter backdrop-blur-md p-8 rounded-lg shadow-2xl text-center text-white w-full max-w-sm border border-gray-700">
-            <h1 class="text-5xl font-bold mb-2 game-title text-blue-400">TANQUES</h1>
-            <p class="text-gray-400 mb-6">Batalla de Equipos</p>
-            <p id="auth-error" class="text-red-400 mb-4 text-sm h-5"></p>
-            <input type="text" id="username-input" placeholder="Nombre de usuario" class="w-full px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" autocomplete="username">
-            <input type="password" id="password-input" placeholder="Contraseña" class="w-full px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" autocomplete="current-password">
-            <button id="login-register-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 transform hover:scale-105">
-                Entrar / Registrarse
-            </button>
-        </div>
-    </div>
-    
-    <!-- Mensaje de muerte -->
-    <div id="death-message" class="hidden absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 backdrop-filter backdrop-blur-sm">
-        <div class="text-center text-white">
-            <h2 class="text-5xl font-bold mb-4 game-title">¡ELIMINADO!</h2>
-            <button id="respawn-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-md transition duration-300 text-xl transform hover:scale-105">
-                Reaparecer
-            </button>
-        </div>
-    </div>
+    <script>
+        const copyButton = document.getElementById('copyButton');
+        const contractAddressInput = document.getElementById('contractAddress');
+        const copySuccessMessage = document.getElementById('copy-success');
 
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, serverTimestamp, updateDoc, getDocs, getDoc, query, orderBy, limit, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- Configuración de Firebase ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDk7UWd_A3-pAgeIiYP-bdAskuuk3wgtIE",
-            authDomain: "tanques-e1a74.firebaseapp.com",
-            projectId: "tanques-e1a74",
-            storageBucket: "tanques-e1a74.appspot.com",
-            messagingSenderId: "1068481268886",
-            appId: "1:1068481268886:web:62fc89493b3ab3f68f46b7",
-            measurementId: "G-J63P0LFMQB"
-        };
-        const appId = "tanques-e1a74";
-        
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        const playersCollection = collection(db, `/artifacts/${appId}/public/data/tanks-players`);
-        const bulletsCollection = collection(db, `/artifacts/${appId}/public/data/tanks-bullets`);
-        const gameStateRef = doc(db, `/artifacts/${appId}/public/data/tanks-gamestate/scores`);
-        const chatCollection = collection(db, `/artifacts/${appId}/public/data/tanks-chat`);
-
-        // --- Constantes del Juego ---
-        const TANK_SIZE = 40;
-        const MAP_TILE_SIZE = 60;
-        const TURRET_LENGTH = TANK_SIZE * 0.9;
-        const TURRET_WIDTH = 10;
-        const BULLET_SIZE = 8;
-        const BULLET_SPEED = 12;
-        const MAX_HEALTH = 100;
-        const TANK_SPEED = 3;
-        const MAP = [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,1],[1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[1,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,1],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],[1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        ];
-        const MAP_WIDTH = MAP[0].length * MAP_TILE_SIZE;
-        const MAP_HEIGHT = MAP.length * MAP_TILE_SIZE;
-        
-        // --- Variables del Juego ---
-        let localPlayer = null;
-        let players = {};
-        let bullets = {};
-        let effects = [];
-        let mouse = { x: 0, y: 0 };
-        let camera = { x: 0, y: 0 };
-        let teamScores = { red: 0, blue: 0 };
-        const keys = {};
-        let unsubscribes = [];
-        let isMobile = false;
-        let audioStarted = false;
-        let animationFrameId;
-
-        // --- Elementos de la UI ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const joinScreen = document.getElementById('join-screen');
-        const usernameInput = document.getElementById('username-input');
-        const passwordInput = document.getElementById('password-input');
-        const loginRegisterButton = document.getElementById('login-register-button');
-        const authError = document.getElementById('auth-error');
-        const playerInfo = document.getElementById('player-info');
-        const deathMessage = document.getElementById('death-message');
-        const respawnButton = document.getElementById('respawn-button');
-        const logoutButton = document.getElementById('logout-button');
-        const leaderboardContainer = document.getElementById('leaderboard-container');
-        const leaderboardList = document.getElementById('leaderboard-list');
-        const chatInput = document.getElementById('chat-input');
-        const sendChatButton = document.getElementById('send-chat-button');
-        const chatMessages = document.getElementById('chat-messages');
-        const joystickContainer = document.getElementById('joystick-container');
-        const joystickThumb = document.getElementById('joystick-thumb');
-
-        // --- Configuración de Sonido ---
-        let shootSound, hitSound, explosionSound;
-        function setupSounds() {
-            shootSound = new Tone.Synth({
-                oscillator: { type: 'triangle' },
-                envelope: { attack: 0.005, decay: 0.1, sustain: 0.05, release: 0.1 }
-            }).toDestination();
-            hitSound = new Tone.NoiseSynth({
-                noise: { type: 'white' },
-                envelope: { attack: 0.001, decay: 0.1, sustain: 0 }
-            }).toDestination();
-            explosionSound = new Tone.MembraneSynth({
-                pitchDecay: 0.05, octaves: 10,
-                envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: 'exponential' }
-            }).toDestination();
-        }
-
-        async function startAudioContext() {
-            if (audioStarted) return;
-            await Tone.start();
-            setupSounds();
-            audioStarted = true;
-            console.log("Audio context started.");
-        }
-        
-        // --- Lógica del Juego ---
-        
-        function detectDevice() {
-            isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            if (isMobile) {
-                joystickContainer.style.display = 'block';
-                setupMobileControls();
+        copyButton.addEventListener('click', () => {
+            const textArea = document.createElement('textarea');
+            textArea.value = contractAddressInput.value.replace('CA: ', ''); // Copy only the address
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                copySuccessMessage.textContent = 'Copied!';
+                copySuccessMessage.style.opacity = '1';
+                setTimeout(() => {
+                    copySuccessMessage.style.opacity = '0';
+                }, 2000);
+            } catch (err) {
+                copySuccessMessage.textContent = 'Failed to copy!';
+                copySuccessMessage.style.opacity = '1';
+                 setTimeout(() => {
+                    copySuccessMessage.style.opacity = '0';
+                }, 2000);
             }
-        }
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-
-        async function assignTeam() {
-            const snapshot = await getDocs(playersCollection);
-            let redCount = 0;
-            let blueCount = 0;
-            snapshot.forEach(doc => {
-                if (doc.data().team === 'red') redCount++;
-                else if (doc.data().team === 'blue') blueCount++;
-            });
-            return redCount <= blueCount ? 'red' : 'blue';
-        }
-
-        async function createPlayerDocument(user, name) {
-            const team = await assignTeam();
-            const spawnPoint = getSpawnPoint();
-            const newPlayer = {
-                id: user.uid, name, team,
-                x: spawnPoint.x, y: spawnPoint.y,
-                angle: 0, health: MAX_HEALTH, score: 0, isDead: false,
-                color: team === 'red' ? '#ef4444' : '#3b82f6',
-                lastSeen: serverTimestamp()
-            };
-            await setDoc(doc(playersCollection, user.uid), newPlayer);
-            const scoreDoc = await getDoc(gameStateRef);
-            if (!scoreDoc.exists()) {
-                await setDoc(gameStateRef, { red: 0, blue: 0 });
-            }
-        }
-
-        function getSpawnPoint() {
-            let x, y, onWall;
-            do {
-                x = Math.random() * (MAP_WIDTH - MAP_TILE_SIZE * 2) + MAP_TILE_SIZE;
-                y = Math.random() * (MAP_HEIGHT - MAP_TILE_SIZE * 2) + MAP_TILE_SIZE;
-                const gridX = Math.floor(x / MAP_TILE_SIZE);
-                const gridY = Math.floor(y / MAP_TILE_SIZE);
-                onWall = MAP[gridY]?.[gridX] === 1;
-            } while (onWall);
-            return { x, y };
-        }
-
-        function checkWallCollision(x, y, size) {
-            const radius = size / 2;
-            const gridX1 = Math.floor((x - radius) / MAP_TILE_SIZE);
-            const gridY1 = Math.floor((y - radius) / MAP_TILE_SIZE);
-            const gridX2 = Math.floor((x + radius) / MAP_TILE_SIZE);
-            const gridY2 = Math.floor((y + radius) / MAP_TILE_SIZE);
-
-            if (MAP[gridY1]?.[gridX1] === 1 || MAP[gridY1]?.[gridX2] === 1 || MAP[gridY2]?.[gridX1] === 1 || MAP[gridY2]?.[gridX2] === 1) {
-                return true;
-            }
-            return false;
-        }
-        
-        function handleInput(joystickInput = {dx: 0, dy: 0}) {
-            if (!localPlayer || localPlayer.isDead) return;
-
-            let dx = joystickInput.dx;
-            let dy = joystickInput.dy;
-
-            if (!isMobile) {
-                if (keys['w'] || keys['W'] || keys['ArrowUp']) dy -= 1;
-                if (keys['s'] || keys['S'] || keys['ArrowDown']) dy += 1;
-                if (keys['a'] || keys['A'] || keys['ArrowLeft']) dx -= 1;
-                if (keys['d'] || keys['D'] || keys['ArrowRight']) dx += 1;
-            }
-
-            if (dx !== 0 || dy !== 0) {
-                const mag = Math.sqrt(dx * dx + dy * dy);
-                const moveX = localPlayer.x + (dx / mag) * TANK_SPEED;
-                const moveY = localPlayer.y + (dy / mag) * TANK_SPEED;
-                
-                if (!checkWallCollision(moveX, localPlayer.y, TANK_SIZE)) {
-                    localPlayer.x = moveX;
-                }
-                if (!checkWallCollision(localPlayer.x, moveY, TANK_SIZE)) {
-                    localPlayer.y = moveY;
-                }
-            }
-
-            if (!isMobile) {
-                const playerScreenX = localPlayer.x - camera.x + canvas.width / 2;
-                const playerScreenY = localPlayer.y - camera.y + canvas.height / 2;
-                localPlayer.angle = Math.atan2(mouse.y - playerScreenY, mouse.x - playerScreenX);
-            }
-        }
-
-        function takeDamage(amount, attackerId) {
-            if (!localPlayer || localPlayer.isDead) return;
-            const attacker = players[attackerId];
-            if (!attacker || attacker.team === localPlayer.team) return; 
-
-            localPlayer.health -= amount;
-            localPlayer.lastHitTime = Date.now();
-            if (audioStarted) hitSound.triggerAttackRelease("0.1");
-
-            updateUI();
-
-            if (localPlayer.health <= 0) {
-                localPlayer.health = 0;
-                localPlayer.isDead = true;
-                playerDied(attackerId);
-            }
-            updateDoc(doc(playersCollection, localPlayer.id), { health: localPlayer.health, isDead: localPlayer.isDead });
-        }
-
-        async function playerDied(killerId) {
-             playerInfo.classList.add('hidden');
-             deathMessage.classList.remove('hidden');
-             createExplosion(localPlayer.x, localPlayer.y);
-             if (audioStarted) explosionSound.triggerAttackRelease("C1", "0.5s");
-
-             const killer = players[killerId];
-             if (killer && killerId !== localPlayer.id) {
-                 const newScore = (killer.score || 0) + 1;
-                 updateDoc(doc(playersCollection, killerId), { score: newScore });
-
-                 const teamToUpdate = killer.team === 'red' ? 'red' : 'blue';
-                 const currentScores = (await getDoc(gameStateRef)).data() || { red: 0, blue: 0 };
-                 const newTeamScore = (currentScores[teamToUpdate] || 0) + 1;
-                 await updateDoc(gameStateRef, { [teamToUpdate]: newTeamScore });
-             }
-        }
-        
-        function respawn() {
-            if (!localPlayer) return;
-            const spawnPoint = getSpawnPoint();
-            localPlayer.x = spawnPoint.x;
-            localPlayer.y = spawnPoint.y;
-            localPlayer.health = MAX_HEALTH;
-            localPlayer.isDead = false;
-
-            updateDoc(doc(playersCollection, localPlayer.id), {
-                x: localPlayer.x, y: localPlayer.y, health: localPlayer.health, isDead: localPlayer.isDead
-            });
-
-            deathMessage.classList.add('hidden');
-            playerInfo.classList.remove('hidden');
-        }
-
-        function drawMap() {
-            for (let y = 0; y < MAP.length; y++) {
-                for (let x = 0; x < MAP[y].length; x++) {
-                    if (MAP[y][x] === 1) {
-                        ctx.fillStyle = "#a0aec0";
-                        ctx.fillRect(x * MAP_TILE_SIZE, y * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE);
-                    }
-                }
-            }
-        }
-
-        // --- Bucle y Renderizado ---
-        let lastUpdateTime = 0;
-        function gameLoop(timestamp) {
-            if (!localPlayer) return;
-            
-            if (timestamp - lastUpdateTime > 1000 / 20) {
-                 if(!localPlayer.isDead) updateGameState();
-                 lastUpdateTime = timestamp;
-            }
-
-            updatePlayersInterpolation();
-            updateBullets();
-            updateEffects();
-            draw();
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-
-        function updatePlayersInterpolation() {
-            for(const id in players) {
-                const p = players[id];
-                if(id === localPlayer?.id) continue;
-                if(p.targetX) {
-                    p.x += (p.targetX - p.x) * 0.3;
-                    p.y += (p.targetY - p.y) * 0.3;
-                    let angleDiff = p.angle - p.currentAngle;
-                    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-                    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-                    p.currentAngle += angleDiff * 0.3;
-                }
-            }
-        }
-
-        function updateBullets() {
-            for (const id in bullets) {
-                const bullet = bullets[id];
-                bullet.x += bullet.vx;
-                bullet.y += bullet.vy;
-
-                if (checkWallCollision(bullet.x, bullet.y, BULLET_SIZE)) {
-                    deleteDoc(doc(bulletsCollection, id));
-                    continue;
-                }
-                
-                const now = Date.now();
-                if (bullet.createdAt && typeof bullet.createdAt.toMillis === 'function') {
-                    const bulletAge = now - bullet.createdAt.toMillis();
-                    if (bulletAge > 4000) {
-                        deleteDoc(doc(bulletsCollection, id));
-                    }
-                }
-            }
-        }
-
-        function updateEffects() {
-            effects = effects.filter(effect => {
-                effect.update();
-                return !effect.isFinished();
-            });
-        }
-
-        function draw() {
-            if (!localPlayer) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y);
-            
-            drawGrid();
-            drawMap();
-
-            effects.forEach(effect => effect.draw(ctx));
-            for (const id in bullets) { drawBullet(bullets[id]); }
-            const sortedPlayers = Object.values(players).sort((a,b) => a.y - b.y);
-            sortedPlayers.forEach(player => { if(!player.isDead) drawTank(player); });
-
-            ctx.restore();
-        }
-
-        function drawTank(player) {
-            ctx.save();
-            ctx.translate(player.x, player.y);
-            
-            if (player.lastHitTime && Date.now() - player.lastHitTime < 150) {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.beginPath();
-                ctx.arc(0, 0, TANK_SIZE / 2 + 5, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            
-            const displayAngle = player.currentAngle !== undefined ? player.currentAngle : player.angle;
-
-            ctx.fillStyle = player.team === 'red' ? '#ef4444' : '#3b82f6';
-            ctx.beginPath();
-            ctx.arc(0, 0, TANK_SIZE / 2, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.save();
-            ctx.rotate(displayAngle);
-            ctx.fillStyle = "#a0aec0";
-            ctx.fillRect(0, -TURRET_WIDTH / 2, TURRET_LENGTH, TURRET_WIDTH);
-            ctx.restore();
-
-            ctx.strokeStyle = "#4a5568";
-            ctx.lineWidth = 3;
-            ctx.stroke();
-
-            ctx.fillStyle = "white";
-            ctx.font = "14px sans-serif";
-            ctx.textAlign = "center";
-            ctx.shadowColor = 'black';
-            ctx.shadowBlur = 4;
-            ctx.fillText(player.name, 0, -TANK_SIZE / 2 - 15);
-            ctx.shadowBlur = 0;
-            
-             if (player.health < MAX_HEALTH) {
-                ctx.fillStyle = "rgba(0,0,0,0.5)";
-                ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2 - 10, TANK_SIZE, 8);
-                const healthColor = player.health > MAX_HEALTH * 0.3 ? '#48bb78' : '#f56565';
-                ctx.fillStyle = healthColor;
-                ctx.fillRect(-TANK_SIZE / 2 + 1, -TANK_SIZE / 2 - 9, (TANK_SIZE - 2) * (player.health / MAX_HEALTH), 6);
-            }
-
-            ctx.restore();
-        }
-        
-        function drawGrid() {
-            const gridSize = 50;
-            ctx.strokeStyle = "#4a5568";
-            ctx.lineWidth = 1;
-
-            const startX = Math.floor(camera.x - canvas.width / 2) - (Math.floor(camera.x - canvas.width / 2) % gridSize);
-            const startY = Math.floor(camera.y - canvas.height / 2) - (Math.floor(camera.y - canvas.height / 2) % gridSize);
-
-            for (let x = startX; x < camera.x + canvas.width / 2; x += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(x, startY);
-                ctx.lineTo(x, camera.y + canvas.height / 2);
-                ctx.stroke();
-            }
-            for (let y = startY; y < camera.y + canvas.height / 2; y += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(startX, y);
-                ctx.lineTo(camera.x + canvas.width / 2, y);
-                ctx.stroke();
-            }
-        }
-
-        function drawBullet(b) { 
-            ctx.fillStyle = "#f56565"; 
-            ctx.beginPath(); 
-            ctx.arc(b.x, b.y, BULLET_SIZE / 2, 0, Math.PI * 2); 
-            ctx.fill(); 
-        }
-
-        function updateUI() {
-             if (!localPlayer) return;
-             document.getElementById('health-bar').style.width = `${(localPlayer.health / MAX_HEALTH) * 100}%`;
-             document.getElementById('score-display').textContent = localPlayer.score;
-             document.getElementById('blue-score').textContent = `Azul: ${teamScores.blue || 0}`;
-             document.getElementById('red-score').textContent = `Rojo: ${teamScores.red || 0}`;
-             
-             leaderboardList.innerHTML = '';
-             const sortedPlayers = Object.values(players).sort((a, b) => b.score - a.score);
-             sortedPlayers.slice(0, 5).forEach(p => {
-                 const li = document.createElement('li');
-                 const teamColor = p.team === 'red' ? 'text-red-400' : 'text-blue-400';
-                 li.className = 'flex justify-between';
-                 li.innerHTML = `<span class="${teamColor} truncate">${p.name}</span> <span>${p.score}</span>`;
-                 leaderboardList.appendChild(li);
-             });
-        }
-        
-        let joystickInput = { dx: 0, dy: 0 };
-        function setupMobileControls() {
-            let touchId = null;
-            let startPos = { x: 0, y: 0 };
-            
-            canvas.addEventListener('touchstart', (e) => {
-                for (const touch of e.changedTouches) {
-                    if (touch.clientX < window.innerWidth / 2 && touchId === null) {
-                        touchId = touch.identifier;
-                        joystickContainer.style.left = `${touch.clientX - 60}px`;
-                        joystickContainer.style.top = `${touch.clientY - 60}px`;
-                        startPos = { x: touch.clientX, y: touch.clientY };
-                    }
-                }
-                e.preventDefault();
-            }, { passive: false });
-
-            canvas.addEventListener('touchmove', (e) => {
-                for (const touch of e.changedTouches) {
-                    if (touch.identifier === touchId) {
-                        const dx = touch.clientX - startPos.x;
-                        const dy = touch.clientY - startPos.y;
-                        const dist = Math.sqrt(dx*dx + dy*dy);
-                        const angle = Math.atan2(dy, dx);
-                        
-                        const maxDist = 40;
-                        const clampedDist = Math.min(dist, maxDist);
-                        
-                        joystickThumb.style.transform = `translate(${Math.cos(angle) * clampedDist}px, ${Math.sin(angle) * clampedDist}px)`;
-                        
-                        joystickInput.dx = dx / maxDist;
-                        joystickInput.dy = dy / maxDist;
-                    }
-                }
-                e.preventDefault();
-            }, { passive: false });
-            
-            canvas.addEventListener('touchend', (e) => {
-                for (const touch of e.changedTouches) {
-                    if (touch.identifier === touchId) {
-                        touchId = null;
-                        joystickThumb.style.transform = `translate(0px, 0px)`;
-                        joystickInput = { dx: 0, dy: 0 };
-                    }
-                }
-            });
-
-            canvas.addEventListener('pointerdown', (e) => {
-                if (e.clientX > window.innerWidth / 2 && localPlayer && !localPlayer.isDead) {
-                    const playerScreenX = localPlayer.x - camera.x + canvas.width / 2;
-                    const playerScreenY = localPlayer.y - camera.y + canvas.height / 2;
-                    localPlayer.angle = Math.atan2(e.clientY - playerScreenY, e.clientX - playerScreenX);
-                    shoot();
-                }
-            });
-
-            setInterval(() => {
-                if (localPlayer) handleInput(joystickInput);
-            }, 1000/60);
-        }
-
-        async function sendChatMessage() {
-            const text = chatInput.value.trim();
-            if (text && localPlayer) {
-                await addDoc(chatCollection, {
-                    name: localPlayer.name,
-                    team: localPlayer.team,
-                    text: text,
-                    createdAt: serverTimestamp()
-                });
-                chatInput.value = '';
-            }
-        }
-
-        // --- Efectos Visuales ---
-        class Particle {
-            constructor(x, y, color) {
-                this.x = x; this.y = y; this.color = color;
-                this.size = Math.random() * 5 + 2;
-                this.life = Math.random() * 50 + 20;
-                const angle = Math.random() * Math.PI * 2;
-                const speed = Math.random() * 4 + 1;
-                this.vx = Math.cos(angle) * speed;
-                this.vy = Math.sin(angle) * speed;
-            }
-            update() {
-                this.x += this.vx; this.y += this.vy;
-                this.life--; this.size *= 0.98;
-            }
-            draw(ctx) {
-                ctx.fillStyle = this.color;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            isFinished() {
-                return this.life <= 0;
-            }
-        }
-        function createExplosion(x, y) {
-            const particleCount = 30;
-            const colors = ['#f56565', '#ed8936', '#f6e05e', '#a0aec0'];
-            for (let i = 0; i < particleCount; i++) {
-                effects.push(new Particle(x, y, colors[Math.floor(Math.random() * colors.length)]));
-            }
-        }
-
-        // --- Inicialización y Listeners ---
-        function init() {
-            detectDevice();
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-            
-            if (!isMobile) {
-                window.addEventListener('keydown', (e) => { keys[e.key] = true; });
-                window.addEventListener('keyup', (e) => { keys[e.key] = false; });
-                canvas.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
-                let shootTimeout;
-                canvas.addEventListener('mousedown', () => { shoot(); shootTimeout = setInterval(shoot, 150); });
-                canvas.addEventListener('mouseup', () => { clearInterval(shootTimeout); });
-                setInterval(() => handleInput(), 1000/60);
-            }
-            
-            chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatMessage(); });
-            sendChatButton.addEventListener('click', sendChatMessage);
-
-            onAuthStateChanged(auth, (user) => {
-                unsubscribes.forEach(unsub => unsub());
-                unsubscribes = [];
-
-                if (user) {
-                    const unsubPlayers = onSnapshot(playersCollection, (snapshot) => {
-                        let playerExists = false;
-                        snapshot.docChanges().forEach((change) => {
-                            const data = change.doc.data();
-                            const id = change.doc.id;
-                            if (id === user.uid) playerExists = true;
-                            
-                            if (change.type === "added") {
-                                players[id] = { id, currentAngle: data.angle, ...data };
-                            } else if (change.type === "modified") {
-                                if(players[id]) {
-                                    if(id === localPlayer?.id) {
-                                        players[id].health = data.health;
-                                        players[id].score = data.score;
-                                        players[id].isDead = data.isDead;
-                                    } else {
-                                        players[id].targetX = data.x;
-                                        players[id].targetY = data.y;
-                                        players[id].angle = data.angle;
-                                        Object.assign(players[id], data); 
-                                    }
-                                }
-                            } else if (change.type === "removed") {
-                                delete players[id];
-                            }
-                        });
-                        if(playerExists && !localPlayer) startGame(players[user.uid]);
-                        updateUI();
-                    });
-                    unsubscribes.push(unsubPlayers);
-
-                    const unsubBullets = onSnapshot(bulletsCollection, (snapshot) => {
-                        snapshot.docChanges().forEach((change) => {
-                            if (change.type === "added") {
-                                if (!bullets[change.doc.id]) bullets[change.doc.id] = { id: change.doc.id, ...change.doc.data() };
-                            } else if (change.type === "removed") {
-                                delete bullets[change.doc.id];
-                            }
-                        });
-                    });
-                    unsubscribes.push(unsubBullets);
-                    
-                    const unsubScores = onSnapshot(gameStateRef, (doc) => {
-                        if (doc.exists()) {
-                            teamScores = doc.data();
-                        } else {
-                            teamScores = { red: 0, blue: 0 };
-                        }
-                        updateUI();
-                    });
-                    unsubscribes.push(unsubScores);
-
-                    const q = query(chatCollection, orderBy("createdAt", "desc"), limit(20));
-                    const unsubChat = onSnapshot(q, (snapshot) => {
-                        chatMessages.innerHTML = '';
-                        snapshot.docs.reverse().forEach(doc => {
-                            const msg = doc.data();
-                            const msgEl = document.createElement('div');
-                            const nameColor = msg.team === 'red' ? 'text-red-400' : 'text-blue-400';
-                            msgEl.innerHTML = `<strong class="${nameColor}">${msg.name}:</strong> ${msg.text}`;
-                            chatMessages.appendChild(msgEl);
-                        });
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    });
-                    unsubscribes.push(unsubChat);
-                    
-                    setInterval(async () => {
-                        const snapshot = await getDocs(playersCollection);
-                        snapshot.forEach(doc => {
-                            const playerData = doc.data();
-                            if (playerData.lastSeen && playerData.lastSeen.toMillis) {
-                                const age = Date.now() - playerData.lastSeen.toMillis();
-                                if (age > 20000) { // 20 segundos
-                                    deleteDoc(doc.ref);
-                                }
-                            }
-                        });
-                    }, 15000);
-
-                } else {
-                    console.log("Usuario no autenticado.");
-                    stopGame();
-                    if(animationFrameId) cancelAnimationFrame(animationFrameId);
-                }
-            });
-            loginRegisterButton.addEventListener('click', handleLoginRegister);
-            respawnButton.addEventListener('click', respawn);
-            logoutButton.addEventListener('click', () => signOut(auth));
-        }
-        
-        init();
-        
-        async function handleLoginRegister() {
-            await startAudioContext();
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value.trim();
-            authError.textContent = '';
-            if (!username || !password) { authError.textContent = 'Por favor, ingresa usuario y contraseña.'; return; }
-            if (password.length < 6) { authError.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
-            const email = `${username.replace(/\s+/g, '_')}@tanksgame.io`;
-            try { await signInWithEmailAndPassword(auth, email, password); } 
-            catch (error) {
-                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                    try {
-                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                        await createPlayerDocument(userCredential.user, username);
-                    } catch (registerError) { authError.textContent = 'No se pudo registrar. Intenta con otro nombre.'; }
-                } else { authError.textContent = 'Error al iniciar sesión. Verifica tus datos.'; }
-            }
-        }
-
-        function startGame(playerData) {
-            localPlayer = playerData;
-            players[localPlayer.id] = localPlayer;
-            joinScreen.classList.add('hidden');
-            canvas.classList.remove('hidden');
-            playerInfo.classList.remove('hidden');
-            leaderboardContainer.classList.remove('hidden');
-            document.getElementById('player-name-display').textContent = localPlayer.name;
-            updateUI();
-            if(animationFrameId) cancelAnimationFrame(animationFrameId);
-            gameLoop();
-        }
-
-        function stopGame() {
-            if (unsubscribes) unsubscribes.forEach(unsub => unsub());
-            localPlayer = null; players = {}; bullets = {};
-            joinScreen.classList.remove('hidden');
-            canvas.classList.add('hidden');
-            playerInfo.classList.add('hidden');
-            leaderboardContainer.classList.add('hidden');
-            deathMessage.classList.add('hidden');
-        }
-
-        function shoot() {
-             if (!localPlayer || localPlayer.isDead) return;
-             if (audioStarted) shootSound.triggerAttackRelease("C5", "0.1");
-             const bulletId = doc(collection(db, 'dummy')).id;
-             const newBullet = {
-                 id: bulletId, ownerId: localPlayer.id,
-                 x: localPlayer.x + Math.cos(localPlayer.angle) * TURRET_LENGTH,
-                 y: localPlayer.y + Math.sin(localPlayer.angle) * TURRET_LENGTH,
-                 vx: Math.cos(localPlayer.angle) * BULLET_SPEED,
-                 vy: Math.sin(localPlayer.angle) * BULLET_SPEED,
-                 createdAt: serverTimestamp()
-             };
-             setDoc(doc(bulletsCollection, bulletId), newBullet);
-        }
-        
-        function updateGameState() {
-            if (!localPlayer || localPlayer.isDead) return;
-            updateDoc(doc(playersCollection, localPlayer.id), {
-                x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle, lastSeen: serverTimestamp()
-            });
-            camera.x += (localPlayer.x - camera.x) * 0.1;
-            camera.y += (localPlayer.y - camera.y) * 0.1;
-            for (const bulletId in bullets) {
-                const bullet = bullets[bulletId];
-                if (bullet.ownerId === localPlayer.id) continue;
-                const distance = Math.hypot(localPlayer.x - bullet.x, localPlayer.y - bullet.y);
-                if (distance < TANK_SIZE / 2 + BULLET_SIZE / 2) {
-                    takeDamage(10, bullet.ownerId);
-                    deleteDoc(doc(bulletsCollection, bulletId));
-                    break;
-                }
-            }
-        }
+            document.body.removeChild(textArea);
+        });
     </script>
 </body>
 </html>
