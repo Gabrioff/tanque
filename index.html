@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tanques Multijugador</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            background-color: #1a202c; /* bg-gray-900 */
+        }
+        canvas {
+            background-color: #2d3748; /* bg-gray-800 */
+            cursor: crosshair;
+            display: block;
+        }
+        #ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+        .ui-element {
+            pointer-events: auto;
+        }
+        #join-screen {
+            background-color: rgba(0, 0, 0, 0.7);
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen">
+
+    <canvas id="gameCanvas" class="hidden"></canvas>
+
+    <div id="ui-container" class="p-4 md:p-6 flex flex-col justify-between">
+        <!-- Parte superior: Información del jugador y ID de sesión -->
+        <div class="flex justify-between items-start text-white">
+            <div id="player-info" class="hidden bg-gray-800 bg-opacity-70 p-3 rounded-lg shadow-lg">
+                <h2 id="player-name-display" class="text-xl font-bold"></h2>
+                <div class="w-full bg-gray-600 rounded-full h-2.5 mt-2">
+                    <div id="health-bar" class="bg-green-500 h-2.5 rounded-full" style="width: 100%"></div>
+                </div>
+                <p class="text-lg mt-1">Puntuación: <span id="score-display">0</span></p>
+                <button id="logout-button" class="ui-element mt-3 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 text-sm">
+                    Cerrar Sesión
+                </button>
+            </div>
+             <div id="session-info" class="hidden text-center bg-gray-800 bg-opacity-70 p-3 rounded-lg shadow-lg">
+                <p class="text-sm text-gray-300">Tu ID de Jugador:</p>
+                <p id="player-id-display" class="font-mono text-lg break-all">Cargando...</p>
+            </div>
+        </div>
+        
+        <!-- Parte inferior: Marcador -->
+        <div id="leaderboard-container" class="self-end hidden">
+            <div id="leaderboard" class="bg-gray-800 bg-opacity-70 p-4 rounded-lg shadow-lg w-64">
+                <h3 class="text-lg font-bold text-white border-b border-gray-600 pb-2 mb-2">Marcador</h3>
+                <ul id="leaderboard-list" class="text-white">
+                    <!-- Las puntuaciones se llenarán aquí -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla para unirse al juego -->
+    <div id="join-screen" class="absolute inset-0 flex items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl text-center text-white w-full max-w-sm">
+            <h1 class="text-4xl font-bold mb-2">Tanques Multijugador</h1>
+            <p class="text-gray-400 mb-6">Inicia sesión o regístrate para jugar.</p>
+            <p id="auth-error" class="text-red-400 mb-4 text-sm"></p>
+            <input type="text" id="username-input" placeholder="Nombre de usuario" class="w-full px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" autocomplete="username">
+            <input type="password" id="password-input" placeholder="Contraseña" class="w-full px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" autocomplete="current-password">
+            <button id="login-register-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300">
+                Entrar / Registrarse
+            </button>
+        </div>
+    </div>
+    
+    <!-- Mensaje de muerte -->
+    <div id="death-message" class="hidden absolute inset-0 flex items-center justify-center bg-black bg-opacity-70">
+        <div class="text-center text-white">
+            <h2 class="text-5xl font-bold mb-4">¡Has sido eliminado!</h2>
+            <button id="respawn-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-md transition duration-300 text-xl">
+                Reaparecer
+            </button>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuración de Firebase ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDk7UWd_A3-pAgeIiYP-bdAskuuk3wgtIE",
+            authDomain: "tanques-e1a74.firebaseapp.com",
+            projectId: "tanques-e1a74",
+            storageBucket: "tanques-e1a74.appspot.com",
+            messagingSenderId: "1068481268886",
+            appId: "1:1068481268886:web:62fc89493b3ab3f68f46b7",
+            measurementId: "G-J63P0LFMQB"
+        };
+        const appId = "tanques-e1a74";
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const playersCollection = collection(db, `/artifacts/${appId}/public/data/tanks-players`);
+        const bulletsCollection = collection(db, `/artifacts/${appId}/public/data/tanks-bullets`);
+
+        // --- Variables del Juego ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const TANK_SIZE = 40;
+        const TURRET_LENGTH = TANK_SIZE * 0.9;
+        const TURRET_WIDTH = 10;
+        const BULLET_SIZE = 8;
+        const BULLET_SPEED = 12; // Velocidad aumentada
+        const MAX_HEALTH = 100;
+        const TANK_SPEED = 3;
+
+        let localPlayer = null;
+        let players = {};
+        let bullets = {};
+        let mouse = { x: 0, y: 0 };
+        let camera = { x: 0, y: 0 };
+        const keys = {};
+        let unsubPlayers;
+        let unsubBullets;
+
+        // --- Elementos de la UI ---
+        const joinScreen = document.getElementById('join-screen');
+        const usernameInput = document.getElementById('username-input');
+        const passwordInput = document.getElementById('password-input');
+        const loginRegisterButton = document.getElementById('login-register-button');
+        const authError = document.getElementById('auth-error');
+        const playerInfo = document.getElementById('player-info');
+        const deathMessage = document.getElementById('death-message');
+        const respawnButton = document.getElementById('respawn-button');
+        const playerIdDisplay = document.getElementById('player-id-display');
+        const logoutButton = document.getElementById('logout-button');
+        const sessionInfo = document.getElementById('session-info');
+        const leaderboardContainer = document.getElementById('leaderboard-container');
+
+        // --- Funciones de Utilidad ---
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // --- Lógica de Autenticación y Juego ---
+        async function handleLoginRegister() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            authError.textContent = '';
+
+            if (!username || !password) {
+                authError.textContent = 'Por favor, ingresa usuario y contraseña.';
+                return;
+            }
+            if (password.length < 6) {
+                authError.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+                return;
+            }
+
+            // Usamos un dominio falso para el sistema de autenticación de Firebase
+            const email = `${username}@tanksgame.io`;
+
+            try {
+                // Intentar iniciar sesión primero
+                await signInWithEmailAndPassword(auth, email, password);
+                console.log('Inicio de sesión exitoso');
+            } catch (error) {
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                    // Si el usuario no existe, intentar registrarlo
+                    try {
+                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                        console.log('Usuario registrado exitosamente');
+                        // Crear el documento del jugador en Firestore
+                        await createPlayerDocument(userCredential.user, username);
+                    } catch (registerError) {
+                        console.error("Error de registro:", registerError);
+                        authError.textContent = 'No se pudo registrar. Intenta con otro nombre.';
+                    }
+                } else {
+                    console.error("Error de inicio de sesión:", error);
+                    authError.textContent = 'Error al iniciar sesión. Verifica tus datos.';
+                }
+            }
+        }
+
+        async function createPlayerDocument(user, name) {
+            const newPlayer = {
+                id: user.uid,
+                name: name,
+                x: Math.random() * 1000,
+                y: Math.random() * 1000,
+                angle: 0,
+                health: MAX_HEALTH,
+                score: 0,
+                color: getRandomColor(),
+                isDead: false,
+                lastSeen: serverTimestamp()
+            };
+            await setDoc(doc(playersCollection, user.uid), newPlayer);
+        }
+
+        function startGame(playerData) {
+            localPlayer = playerData;
+            players[localPlayer.id] = localPlayer;
+            
+            joinScreen.classList.add('hidden');
+            canvas.classList.remove('hidden');
+            playerInfo.classList.remove('hidden');
+            sessionInfo.classList.remove('hidden');
+            leaderboardContainer.classList.remove('hidden');
+            
+            document.getElementById('player-name-display').textContent = localPlayer.name;
+            playerIdDisplay.textContent = localPlayer.id;
+
+            updateUI();
+            gameLoop();
+        }
+
+        function stopGame() {
+            if (unsubPlayers) unsubPlayers();
+            if (unsubBullets) unsubBullets();
+            unsubPlayers = null;
+            unsubBullets = null;
+            localPlayer = null;
+            players = {};
+            bullets = {};
+
+            joinScreen.classList.remove('hidden');
+            canvas.classList.add('hidden');
+            playerInfo.classList.add('hidden');
+            sessionInfo.classList.add('hidden');
+            leaderboardContainer.classList.add('hidden');
+            deathMessage.classList.add('hidden');
+        }
+
+        function respawn() {
+            if (!localPlayer) return;
+            localPlayer.x = Math.random() * 1000;
+            localPlayer.y = Math.random() * 1000;
+            localPlayer.health = MAX_HEALTH;
+            localPlayer.isDead = false;
+
+            updateDoc(doc(playersCollection, localPlayer.id), {
+                x: localPlayer.x,
+                y: localPlayer.y,
+                health: localPlayer.health,
+                isDead: localPlayer.isDead
+            });
+
+            deathMessage.classList.add('hidden');
+            playerInfo.classList.remove('hidden');
+        }
+
+        function handleInput() {
+            if (!localPlayer || localPlayer.isDead) return;
+
+            let dx = 0;
+            let dy = 0;
+
+            if (keys['w'] || keys['W'] || keys['ArrowUp']) dy -= 1;
+            if (keys['s'] || keys['S'] || keys['ArrowDown']) dy += 1;
+            if (keys['a'] || keys['A'] || keys['ArrowLeft']) dx -= 1;
+            if (keys['d'] || keys['D'] || keys['ArrowRight']) dx += 1;
+
+            if (dx !== 0 || dy !== 0) {
+                const mag = Math.sqrt(dx*dx + dy*dy);
+                localPlayer.x += (dx / mag) * TANK_SPEED;
+                localPlayer.y += (dy / mag) * TANK_SPEED;
+            }
+
+            const playerScreenX = localPlayer.x - camera.x + canvas.width / 2;
+            const playerScreenY = localPlayer.y - camera.y + canvas.height / 2;
+            localPlayer.angle = Math.atan2(mouse.y - playerScreenY, mouse.x - playerScreenX);
+        }
+        
+        function updateGameState() {
+            if (!localPlayer || localPlayer.isDead) return;
+
+            updateDoc(doc(playersCollection, localPlayer.id), {
+                x: localPlayer.x,
+                y: localPlayer.y,
+                angle: localPlayer.angle,
+                lastSeen: serverTimestamp()
+            });
+
+            camera.x = localPlayer.x;
+            camera.y = localPlayer.y;
+
+            for (const bulletId in bullets) {
+                const bullet = bullets[bulletId];
+                if (bullet.ownerId === localPlayer.id) continue;
+
+                const distance = Math.hypot(localPlayer.x - bullet.x, localPlayer.y - bullet.y);
+                if (distance < TANK_SIZE / 2 + BULLET_SIZE / 2) {
+                    takeDamage(10, bullet.ownerId);
+                    deleteDoc(doc(bulletsCollection, bulletId));
+                    break; 
+                }
+            }
+        }
+
+        function updateBullets() {
+            const now = Date.now();
+            for (const id in bullets) {
+                const bullet = bullets[id];
+
+                // Mover la bala
+                bullet.x += bullet.vx;
+                bullet.y += bullet.vy;
+
+                // Comprobar la vida útil (4 segundos)
+                if (bullet.createdAt && typeof bullet.createdAt.toMillis === 'function') {
+                    const bulletAge = now - bullet.createdAt.toMillis();
+                    if (bulletAge > 4000) {
+                        deleteDoc(doc(bulletsCollection, id));
+                    }
+                }
+            }
+        }
+        
+        function takeDamage(amount, attackerId) {
+            if (!localPlayer || localPlayer.isDead) return;
+            
+            localPlayer.health -= amount;
+            updateUI();
+
+            if (localPlayer.health <= 0) {
+                localPlayer.health = 0;
+                localPlayer.isDead = true;
+                playerDied(attackerId);
+            }
+             updateDoc(doc(playersCollection, localPlayer.id), { health: localPlayer.health, isDead: localPlayer.isDead });
+        }
+
+        function playerDied(killerId) {
+             playerInfo.classList.add('hidden');
+             deathMessage.classList.remove('hidden');
+             
+             if (killerId && players[killerId] && killerId !== localPlayer.id) {
+                 const newScore = (players[killerId].score || 0) + 1;
+                 updateDoc(doc(playersCollection, killerId), { score: newScore });
+             }
+        }
+
+        // --- Funciones de Dibujo ---
+        function draw() {
+            if (!localPlayer) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y);
+            
+            drawGrid();
+
+            for (const id in bullets) {
+                drawBullet(bullets[id]);
+            }
+
+            const sortedPlayers = Object.values(players).sort((a,b) => a.y - b.y);
+            sortedPlayers.forEach(player => {
+                if(!player.isDead) {
+                    drawTank(player);
+                }
+            });
+
+            ctx.restore();
+        }
+        
+        function drawGrid() {
+            const gridSize = 50;
+            ctx.strokeStyle = "#4a5568";
+            ctx.lineWidth = 1;
+
+            const startX = Math.floor(camera.x - canvas.width / 2) - (Math.floor(camera.x - canvas.width / 2) % gridSize);
+            const startY = Math.floor(camera.y - canvas.height / 2) - (Math.floor(camera.y - canvas.height / 2) % gridSize);
+
+            for (let x = startX; x < camera.x + canvas.width / 2; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, startY);
+                ctx.lineTo(x, camera.y + canvas.height / 2);
+                ctx.stroke();
+            }
+            for (let y = startY; y < camera.y + canvas.height / 2; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(startX, y);
+                ctx.lineTo(camera.x + canvas.width / 2, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawTank(player) {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            
+            ctx.save();
+            ctx.rotate(player.angle);
+            ctx.fillStyle = "#a0aec0";
+            ctx.fillRect(0, -TURRET_WIDTH / 2, TURRET_LENGTH, TURRET_WIDTH);
+            ctx.restore();
+
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, TANK_SIZE / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#4a5568";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.fillStyle = "white";
+            ctx.font = "14px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(player.name, 0, -TANK_SIZE / 2 - 15);
+            
+            if (player.health < MAX_HEALTH) {
+                ctx.fillStyle = "black";
+                ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2 - 10, TANK_SIZE, 8);
+                ctx.fillStyle = "red";
+                ctx.fillRect(-TANK_SIZE / 2 + 1, -TANK_SIZE / 2 - 9, (TANK_SIZE - 2) * (player.health / MAX_HEALTH), 6);
+            }
+
+            ctx.restore();
+        }
+
+        function drawBullet(bullet) {
+            ctx.fillStyle = "#f56565";
+            ctx.beginPath();
+            ctx.arc(bullet.x, bullet.y, BULLET_SIZE / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function updateUI() {
+             if (!localPlayer) return;
+             document.getElementById('health-bar').style.width = `${(localPlayer.health / MAX_HEALTH) * 100}%`;
+             document.getElementById('score-display').textContent = localPlayer.score;
+
+             const sortedPlayers = Object.values(players)
+                .filter(p => p.score !== undefined)
+                .sort((a,b) => b.score - a.score)
+                .slice(0, 5);
+
+             const leaderboardList = document.getElementById('leaderboard-list');
+             leaderboardList.innerHTML = '';
+             sortedPlayers.forEach(p => {
+                 const li = document.createElement('li');
+                 li.className = 'flex justify-between py-1';
+                 li.innerHTML = `<span>${p.name}</span><span>${p.score}</span>`;
+                 leaderboardList.appendChild(li);
+             });
+        }
+        
+        // --- Bucle Principal y Eventos ---
+        let lastUpdateTime = 0;
+        let animationFrameId;
+        function gameLoop(timestamp) {
+            if (!localPlayer) return;
+
+            if (!localPlayer.isDead) {
+                handleInput();
+                 if (timestamp - lastUpdateTime > 1000 / 20) {
+                     updateGameState();
+                     lastUpdateTime = timestamp;
+                 }
+            }
+            updateBullets(); // Mover y gestionar balas en cada frame
+            draw();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function shoot() {
+             if (!localPlayer || localPlayer.isDead) return;
+
+             const bulletId = doc(collection(db, 'dummy')).id;
+             const newBullet = {
+                 id: bulletId,
+                 ownerId: localPlayer.id,
+                 x: localPlayer.x + Math.cos(localPlayer.angle) * TURRET_LENGTH,
+                 y: localPlayer.y + Math.sin(localPlayer.angle) * TURRET_LENGTH,
+                 vx: Math.cos(localPlayer.angle) * BULLET_SPEED,
+                 vy: Math.sin(localPlayer.angle) * BULLET_SPEED,
+                 createdAt: serverTimestamp()
+             };
+             
+             setDoc(doc(bulletsCollection, bulletId), newBullet);
+        }
+
+        // --- Inicialización y Listeners de Firebase ---
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            window.addEventListener('keydown', (e) => { keys[e.key] = true; });
+            window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                mouse.x = e.clientX - rect.left;
+                mouse.y = e.clientY - rect.top;
+            });
+
+            let shootTimeout;
+            canvas.addEventListener('mousedown', () => {
+                shoot();
+                shootTimeout = setInterval(shoot, 150);
+            });
+            canvas.addEventListener('mouseup', () => {
+                clearInterval(shootTimeout);
+            });
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            loginRegisterButton.addEventListener('click', handleLoginRegister);
+            respawnButton.addEventListener('click', respawn);
+            logoutButton.addEventListener('click', () => signOut(auth));
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    console.log("Usuario autenticado:", user.uid);
+                    
+                    if (unsubPlayers) unsubPlayers();
+                    unsubPlayers = onSnapshot(playersCollection, (snapshot) => {
+                        let playerExists = false;
+                        snapshot.docChanges().forEach((change) => {
+                            const playerData = change.doc.data();
+                            if (change.doc.id === user.uid) playerExists = true;
+
+                            if (change.type === "added" || change.type === "modified") {
+                                players[change.doc.id] = { id: change.doc.id, ...playerData };
+                                if(localPlayer && change.doc.id === localPlayer.id) {
+                                    Object.assign(localPlayer, playerData);
+                                    if(localPlayer.isDead && !deathMessage.classList.contains('hidden')) {
+                                         playerInfo.classList.add('hidden');
+                                    } else if (!localPlayer.isDead && deathMessage.classList.contains('hidden')) {
+                                         playerInfo.classList.remove('hidden');
+                                    }
+                                    updateUI();
+                                }
+                            } else if (change.type === "removed") {
+                                delete players[change.doc.id];
+                            }
+                        });
+                        if(playerExists && !localPlayer) {
+                            startGame(players[user.uid]);
+                        }
+                        updateUI();
+                    });
+
+                    if (unsubBullets) unsubBullets();
+                    unsubBullets = onSnapshot(bulletsCollection, (snapshot) => {
+                        snapshot.docChanges().forEach((change) => {
+                            const bulletData = change.doc.data();
+                            const id = change.doc.id;
+                            
+                            if (change.type === "added") {
+                                // Añade nuevas balas a nuestro estado de juego local
+                                if (!bullets[id]) {
+                                    bullets[id] = { id, ...bulletData };
+                                }
+                            }
+                            if (change.type === "removed") {
+                                // Elimina las balas de nuestro estado de juego local
+                                delete bullets[id];
+                            }
+                        });
+                    });
+
+                } else {
+                    console.log("Usuario no autenticado.");
+                    stopGame();
+                    if(animationFrameId) cancelAnimationFrame(animationFrameId);
+                }
+            });
+        }
+        
+        init();
+    </script>
+</body>
+</html>
+
