@@ -254,7 +254,7 @@
             @apply font-semibold text-lg text-zinc-900 dark:text-zinc-100 mb-3;
         }
         .widget-card-link {
-            @apply block text-center w-full mt-4 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors duration-200;
+            @apply block text-center w-full px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors duration-200;
         }
         /* NUEVO: Estilo para el Iframe de YouTube */
         .youtube-embed {
@@ -399,7 +399,7 @@
 HERRAMIENTAS:
 - ¡REGLA 1! Si el usuario pide un video de YouTube, DEBES: 1. Usar la búsqueda de Google para encontrar el VIDEO_ID y Título. 2. Responder SÓLAMENTE con el formato: \`[YOUTUBE: "VIDEO_ID_REAL", "Título del Video"]\`.
 - ¡REGLA 2! Si el usuario pide una ubicación en un mapa, DEBES: 1. Responder SÓLAMENTE con el formato: \`[MAPS: "nombre del lugar o dirección"]\`.
-- ¡REGLA 3! Si el usuario pide código, DEBES generarlo. Tu respuesta DEBE ser SÓLO el bloque de código. NO añadas texto explicativo antes o después del bloque de código, a menos que el usuario pida una explicación. Responde SÓLO con \`\`\`language\n...código...\n\`\`\`.`,
+- ¡REGLA 3! Si el usuario pide código, DEBES generarlo. Tu respuesta DEBE ser SÓLO el bloque de código. ES OBLIGATORIO que generes el \`\`\`language\n...código...\n\`\`\`. NO hables sobre el código.`,
             
             amistoso: `Eres AURA, un asistente de IA amigable. Tu tono es casual y cálido. Puedes usar emojis estándar (😊, 👍) y los siguientes stickers de gatos (úsalos con moderación) usando sus tokens:
 - [CAT_MEOWL]: (https://cdn3.emoji.gg/emojis/621730-meowl.png) Para sorpresa.
@@ -410,7 +410,7 @@ HERRAMIENTAS:
 HERRAMIENTAS:
 - ¡REGLA 1! Si el usuario pide un video de YouTube, DEBES: 1. Usar la búsqueda de Google para encontrar un VIDEO_ID y Título. 2. Responder con texto amigable Y el widget, e.g., "¡Claro! Aquí tienes: \`[YOUTUBE: "VIDEO_ID_REAL", "Título del Video"]\`".
 - ¡REGLA 2! Si el usuario pide un mapa, DEBES responder "¡Encontrado! \`[MAPS: "nombre del lugar"]\`".
-- ¡REGLA 3! Si el usuario pide código, DEBES generarlo y responder con una breve introducción Y el bloque de código. Tu respuesta DEBE CONTENER \`\`\`language\n...código...\n\`\`\`.`,
+- ¡REGLA 3! Si el usuario pide código, DEBES generarlo. Responde con una breve introducción. Inmediatamente después, ES OBLIGATORIO que generes el bloque de código. Tu respuesta DEBE CONTENER \`\`\`language\n...código...\n\`\`\`.`,
             
             creativo: `Eres AURA, un asistente de IA creativo. Usas un lenguaje expresivo y los stickers de gatos (sin exagerar).
 - [CAT_MEOWL]: ¡Sorpresa!
@@ -421,7 +421,7 @@ HERRAMIENTAS:
 HERRAMIENTAS:
 - ¡REGLA 1! Si el usuario pide un video de YouTube, DEBES: 1. Usar la búsqueda de Google para encontrar un VIDEO_ID y Título. 2. Responder creativamente, e.g., "¡Una gran elección! 🎶 \`[YOUTUBE: "VIDEO_ID_REAL", "Título del Video"]\`".
 - ¡REGLA 2! Si el usuario pide un mapa, DEBES responder "¡Rumbo a la aventura! 🗺️ \`[MAPS: "nombre del lugar"]\`".
-- ¡REGLA 3! Si el usuario pide código, DEBES generarlo y responder con una introducción creativa Y el bloque de código. Tu respuesta DEBE CONTENER \`\`\`language\n...código...\n\`\`\`.`
+- ¡REGLA 3! Si el usuario pide código, DEBES generarlo. Responde con una introducción creativa. Inmediatamente después, ES OBLIGATORIO que generes el bloque de código. Tu respuesta DEBE CONTENER \`\`\`language\n...código...\n\`\`\`.`
         };
         
         // Mapa de Emojis/Stickers
@@ -806,6 +806,11 @@ HERRAMIENTAS:
                                     allowfullscreen>
                                 </iframe>
                             </div>
+                            <!-- SOLUCIÓN: Botón de fallback por si el video está bloqueado -->
+                            <a href="https://www.youtube.com/watch?v=${escapeHTML(videoId)}" target="_blank" rel="noopener noreferrer" 
+                               class="widget-card-link bg-red-600 hover:bg-red-700 mt-3">
+                                Abrir en YouTube
+                            </a>
                         </div>
                     </div>
                 `;
