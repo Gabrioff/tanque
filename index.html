@@ -1,784 +1,1103 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class=""> <!-- Se añade/quita 'dark' aquí -->
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Tanques Multijugador</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prototipo de AURA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <script>
+        // Control del Tema (Modo Oscuro) - Se ejecuta primero para evitar parpadeos
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
 
     <style>
+        /* Estilos personalizados y animaciones complejas */
+        
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
+            /* Transición suave de colores para el modo oscuro */
+            @apply bg-zinc-100 text-zinc-800 transition-colors duration-300;
+        }
+        
+        .dark body {
+            @apply bg-zinc-900 text-zinc-200;
+        }
+
+        .hidden { display: none; }
+
+        /* Estilos del Scrollbar (Modo Claro) */
+        #chat-window::-webkit-scrollbar { width: 6px; }
+        #chat-window::-webkit-scrollbar-track { background: transparent; }
+        #chat-window::-webkit-scrollbar-thumb { @apply bg-zinc-300; border-radius: 3px; }
+        #chat-window::-webkit-scrollbar-thumb:hover { @apply bg-zinc-400; }
+
+        /* Estilos del Scrollbar (Modo Oscuro) */
+        .dark #chat-window::-webkit-scrollbar-thumb { @apply bg-zinc-600; }
+        .dark #chat-window::-webkit-scrollbar-thumb:hover { @apply bg-zinc-500; }
+
+        /* --- Animaciones --- */
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            80% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .message-bubble {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes textFadeIn {
+            0% { opacity: 0; transform: translateY(5px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .message-bubble .message-content-wrapper {
+            animation: textFadeIn 0.2s ease-out 0.1s forwards;
+            opacity: 0;
+        }
+
+        @keyframes waveDot {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+        .typing-indicator span {
+            @apply bg-zinc-400;
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: waveDot 1.3s infinite ease-in-out;
+        }
+        .dark .typing-indicator span { @apply bg-zinc-500; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.1s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.2s; }
+
+        @keyframes slideInUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .input-bar-animate {
+            animation: slideInUp 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .chat-container-animate {
+            animation: fadeIn 0.3s ease-in forwards;
+        }
+        
+        @keyframes premiumModalIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .premium-modal-animate {
+            animation: premiumModalIn 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        /* Pantalla de Carga */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .loading-spinner {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .fade-out {
+            animation: fadeOut 0.5s ease-out forwards;
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; pointer-events: none; }
+        }
+        
+        /* Animación para Reply Bar */
+        @keyframes slideInDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .reply-bar-animate {
+            animation: slideInDown 0.3s ease-out forwards;
+        }
+
+        /* Animación para Emoji Picker */
+        @keyframes popInPicker {
+            from { transform: scale(0.9) translateY(10px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .picker-animate {
+            transform-origin: bottom left;
+            animation: popInPicker 0.2s ease-out forwards;
+        }
+
+        /* Estilos para Bloques de Código */
+        .code-block {
+            position: relative;
+            background-color: #282c34;
+            border-radius: 0.5rem;
+            margin: 0.5rem 0;
             overflow: hidden;
-            background-color: #1a202c; /* bg-gray-900 */
         }
-        .game-title {
-            font-family: 'Bungee', cursive;
+        .code-block pre {
+            margin: 0;
+            padding: 1rem;
+            color: #abb2bf;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
         }
-        canvas {
-            background-color: #2d3748; /* bg-gray-800 */
-            cursor: crosshair;
+        .code-block pre code {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .code-block pre::-webkit-scrollbar { height: 8px; }
+        .code-block pre::-webkit-scrollbar-track { background: #282c34; }
+        .code-block pre::-webkit-scrollbar-thumb { @apply bg-zinc-600; border-radius: 4px; }
+        .code-block .copy-code-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            background-color: #444;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .code-block:hover .copy-code-btn { opacity: 1; }
+        .code-block .copy-code-btn:active { background-color: #555; }
+        
+        /* Estilo para los Emojis/Stickers */
+        .ai-emoji {
+            width: 28px;
+            height: 28px;
+            display: inline-block;
+            vertical-align: bottom;
+            margin: 0 2px;
+        }
+        
+        /* Estilos para el Input ContentEditable */
+        #chat-input {
+            flex: 1;
+            background: transparent;
+            @apply text-zinc-900;
+            outline: none;
+            font-size: 1.125rem; /* text-lg */
+            line-height: 1.75rem;
+            padding: 0.25rem 0;
+            min-height: 2.5rem;
+            max-height: 120px;
+            overflow-y: auto;
+            word-wrap: break-word;
+            -webkit-user-modify: read-write-plaintext-only;
+        }
+        .dark #chat-input { @apply text-zinc-100; }
+        
+        #chat-input:empty::before {
+            content: "Escribe tu mensaje...";
+            @apply text-zinc-500;
+            pointer-events: none;
             display: block;
         }
-        #ui-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-        }
-        .ui-element {
-            pointer-events: auto;
-        }
-        #join-screen {
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://placehold.co/1920x1080/1a202c/2d3748?text=.');
-            background-size: cover;
-            pointer-events: auto;
-        }
-        /* Estilos del Chat */
-        #chat-container {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            width: 320px;
-            height: 220px;
-            background-color: rgba(26, 32, 44, 0.7);
-            backdrop-filter: blur(5px);
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            pointer-events: auto;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        #chat-messages {
-            flex-grow: 1;
-            padding: 10px;
-            overflow-y: auto;
-            color: white;
-            font-size: 14px;
-            scrollbar-width: thin;
-            scrollbar-color: #4A5568 #2D3748;
-        }
-        #chat-input-area {
-            display: flex;
-            border-top: 1px solid rgba(255,255,255,0.1);
-        }
-        #chat-input {
-            padding: 8px;
-            background: transparent;
-            color: white;
-            flex-grow: 1;
-            border: none;
-            outline: none;
-        }
-        #send-chat-button {
-            background-color: #2b6cb0;
-            color: white;
-            border: none;
-            padding: 0 15px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        #send-chat-button:hover { background-color: #2c5282; }
+        .dark #chat-input:empty::before { @apply text-zinc-400; }
 
-        /* Estilos del Joystick Virtual */
-        #joystick-container {
-            position: absolute;
-            bottom: 50px;
-            left: 50px;
-            width: 120px;
-            height: 120px;
-            display: none; /* Oculto por defecto */
+        #chat-input .chat-input-emoji {
+            width: 24px;
+            height: 24px;
+            display: inline-block;
+            vertical-align: bottom;
+            margin: 0 1px;
+            user-select: none; 
         }
-        #joystick-base {
-            position: absolute;
-            width: 120px;
-            height: 120px;
-            background: rgba(100, 100, 100, 0.4);
-            border-radius: 50%;
+        
+        /* MEJORA: Estilos para Widgets (Integrados) */
+        .widget-card {
+            /* "Gris más oscurito" para integrar con el fondo */
+            @apply max-w-sm border rounded-lg overflow-hidden my-2 bg-zinc-200 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 shadow-md;
         }
-        #joystick-thumb {
-            position: absolute;
-            width: 60px;
-            height: 60px;
-            background: rgba(200, 200, 200, 0.6);
-            border-radius: 50%;
-            top: 30px;
-            left: 30px;
+        .widget-card-header {
+            @apply flex items-center gap-3 p-3 border-b border-zinc-300 dark:border-zinc-700;
+        }
+        .widget-card-header-icon {
+            /* Fondo sutil para el icono */
+            @apply w-10 h-10 rounded-full flex items-center justify-center bg-white/50 dark:bg-zinc-700/50;
+        }
+        .widget-card-header-text {
+            @apply text-sm font-medium text-zinc-800 dark:text-zinc-200;
+        }
+        .widget-card-body {
+            @apply p-4;
+        }
+        .widget-card-title {
+            @apply font-semibold text-lg text-zinc-900 dark:text-zinc-100 mb-3;
+        }
+        .widget-card-link {
+            @apply block text-center w-full mt-4 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors duration-200;
+        }
+        /* NUEVO: Estilo para el Iframe de YouTube */
+        .youtube-embed {
+            @apply w-full aspect-video rounded-lg overflow-hidden;
         }
     </style>
 </head>
-<body class="w-screen h-screen">
+<body class="bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200">
 
-    <canvas id="gameCanvas" class="hidden"></canvas>
-    
-    <div id="joystick-container">
-        <div id="joystick-base"></div>
-        <div id="joystick-thumb"></div>
+    <!-- 
+      PANTALLA DE CARGA 
+    -->
+    <div id="loading-screen" class="fixed inset-0 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center z-50 transition-opacity duration-500">
+        <div class="loading-spinner">
+            <h1 class="text-4xl font-bold text-zinc-800 dark:text-zinc-200">AURA</h1>
+        </div>
+        <p class="text-zinc-600 dark:text-zinc-400 mt-2">Iniciando...</p>
     </div>
 
-    <div id="ui-container" class="p-4 md:p-6 flex flex-col justify-between h-full">
-        <!-- Parte superior: Información, Puntuaciones, Marcador -->
-        <div class="flex justify-between items-start text-white w-full gap-4">
-            <div id="player-info" class="hidden bg-gray-800 bg-opacity-70 p-3 rounded-lg shadow-lg min-w-[200px]">
-                <h2 id="player-name-display" class="text-xl font-bold truncate"></h2>
-                <div class="w-full bg-gray-600 rounded-full h-2.5 mt-2">
-                    <div id="health-bar" class="bg-green-500 h-2.5 rounded-full transition-all duration-300"></div>
+    <!-- 
+      MODAL DE SELECCIÓN DE PERSONALIDAD 
+    -->
+    <div id="personality-modal" class="hidden fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-40 p-6">
+        <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-2xl p-8 max-w-md w-full text-center premium-modal-animate">
+            <h2 class="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-4">Elige la personalidad de AURA</h2>
+            <p class="text-zinc-600 dark:text-zinc-300 mb-8">¿Cómo prefieres que AURA te responda?</p>
+            
+            <div id="personality-options" class="grid grid-cols-1 gap-4">
+                <div data-personality="profesional" class="cursor-pointer p-5 bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600 rounded-lg border border-zinc-200 dark:border-zinc-600 transition-all duration-200">
+                    <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Profesional</h3>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-300">Respuestas directas, formales y concisas. Sin emojis.</p>
                 </div>
-                <p class="text-lg mt-1">Puntuación: <span id="score-display">0</span></p>
-                <button id="logout-button" class="ui-element mt-3 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 text-sm">
-                    Cerrar Sesión
+                <div data-personality="amistoso" class="cursor-pointer p-5 bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600 rounded-lg border border-zinc-200 dark:border-zinc-600 transition-all duration-200">
+                    <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Amistoso</h3>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-300">Tono casual, servicial y uso moderado de stickers.</p>
+                </div>
+                <div data-personality="creativo" class="cursor-pointer p-5 bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600 rounded-lg border border-zinc-200 dark:border-zinc-600 transition-all duration-200">
+                    <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Creativo</h3>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-300">Ideas originales, tono entusiasta y uso de stickers (sin exagerar).</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 
+      CONTENEDOR PRINCIPAL DEL CHAT 
+    -->
+    <div id="chat-container" class="h-full flex flex-col hidden">
+
+        <!-- Cabecera del Chat -->
+        <header class="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-700 p-4 shadow-sm z-10">
+            <div class="max-w-4xl mx-auto flex justify-between items-center">
+                <div>
+                    <h1 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">AURA</h1>
+                    <p id="header-personality" class="text-sm text-zinc-600 dark:text-zinc-400">Prototipo Premium</p>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <button id="theme-toggle-button" class="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors duration-200">
+                        <i data-feather="sun" class="w-5 h-5 hidden dark:block"></i>
+                        <i data-feather="moon" class="w-5 h-5 block dark:hidden"></i>
+                    </button>
+                    <button id="clear-chat-button" class="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium px-3 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors duration-200">
+                        Limpiar Chat
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Ventana de Chat -->
+        <div id="chat-window" class="flex-1 overflow-y-auto p-6 space-y-5 scroll-smooth chat-container-animate">
+            <!-- Los mensajes se añadirán aquí dinámicamente -->
+        </div>
+        
+        <!-- Indicador de "Escribiendo..." -->
+        <div id="typing-indicator" class="hidden p-6">
+            <div class="flex justify-start">
+                <div class="bg-zinc-200 dark:bg-zinc-700 rounded-2xl p-4 typing-indicator shadow-sm">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de "Respondiendo a..." -->
+        <div id="replying-to-bar" class="hidden px-6 pt-2">
+            <div class="bg-zinc-200 dark:bg-zinc-700 p-2 rounded-t-lg text-sm text-zinc-600 dark:text-zinc-300 max-w-4xl mx-auto flex justify-between items-center reply-bar-animate">
+                <span id="replying-to-text" class="truncate overflow-hidden">Respondiendo a...</span>
+                <button id="cancel-reply" class="p-1 rounded-full hover:bg-zinc-300 dark:hover:bg-zinc-600">
+                    <i data-feather="x" class="w-4 h-4"></i>
                 </button>
             </div>
-             <div id="team-scores" class="flex-grow flex justify-center items-center gap-8 text-3xl font-bold game-title text-shadow">
-                 <span id="blue-score" class="text-blue-400">Azul: 0</span>
-                 <span id="red-score" class="text-red-400">Rojo: 0</span>
-             </div>
-             <div id="leaderboard-container" class="self-start hidden">
-                <div id="leaderboard" class="bg-gray-800 bg-opacity-70 p-4 rounded-lg shadow-lg w-64">
-                    <h3 class="text-lg font-bold text-white border-b border-gray-600 pb-2 mb-2">Marcador</h3>
-                    <ul id="leaderboard-list" class="text-white"></ul>
-                </div>
+        </div>
+
+        <!-- Barra de entrada "Burbuja" -->
+        <div class="p-4 sm:p-6 input-bar-animate relative">
+            
+            <!-- Selector de Emojis (Stickers/Tokens) -->
+            <div id="emoji-picker" class="hidden absolute bottom-24 bg-white dark:bg-zinc-800 p-2 rounded-lg shadow-xl border border-zinc-200 dark:border-zinc-700 flex gap-2 picker-animate">
+                <img src="https://cdn3.emoji.gg/emojis/621730-meowl.png" data-emoji="[CAT_MEOWL]" class="w-8 h-8 cursor-pointer hover:scale-110 transition-transform" alt="Meowl">
+                <img src="https://cdn3.emoji.gg/emojis/353281-cat.gif" data-emoji="[CAT_GIF]" class="w-8 h-8 cursor-pointer hover:scale-110 transition-transform" alt="Cat Gif">
+                <img src="https://cdn3.emoji.gg/emojis/454661-cat.png" data-emoji="[CAT_PNG]" class="w-8 h-8 cursor-pointer hover:scale-110 transition-transform" alt="Cat PNG">
+                <img src="https://cdn3.emoji.gg/emojis/403168-blushing-critter.png" data-emoji="[CAT_BLUSH]" class="w-8 h-8 cursor-pointer hover:scale-110 transition-transform" alt="Blushing Critter">
+                <img src="https://cdn3.emoji.gg/emojis/339345-cathink.png" data-emoji="[CAT_THINK]" class="w-8 h-8 cursor-pointer hover:scale-110 transition-transform" alt="Cat Think">
+            </div>
+
+            <!-- <form> ahora solo envuelve el botón -->
+            <div class="max-w-4xl mx-auto flex items-start space-x-3 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-full p-2 shadow-lg transition-all duration-300 focus-within:shadow-xl focus-within:border-blue-500 dark:focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
+                <button type="button" id="emoji-toggle" class="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors mt-1">
+                    <i data-feather="smile" class="w-6 h-6"></i>
+                </button>
+                
+                <!-- <input> a <div contenteditable> -->
+                <div id="chat-input" 
+                     contenteditable="true" 
+                     role="textbox" 
+                     aria-multiline="true"
+                     class="flex-1 bg-transparent focus:outline-none text-lg"></div>
+                
+                <form id="chat-form" class="flex">
+                    <button type="submit" id="send-button" class="bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-full p-3 shadow-md hover:bg-zinc-900 dark:hover:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 self-end">
+                        <i data-feather="send" class="w-6 h-6"></i>
+                    </button>
+                </form>
             </div>
         </div>
-        
-        <!-- Parte inferior: Chat -->
-        <div class="flex justify-between items-end">
-             <div id="chat-container">
-                <div id="chat-messages"></div>
-                <div id="chat-input-area">
-                    <input type="text" id="chat-input" placeholder="Escribe un mensaje..." class="ui-element">
-                    <button id="send-chat-button" class="ui-element">Enviar</button>
-                </div>
-             </div>
-        </div>
     </div>
-
-    <!-- Pantalla para unirse al juego -->
-    <div id="join-screen" class="absolute inset-0 flex items-center justify-center">
-        <div class="bg-gray-900 bg-opacity-80 backdrop-filter backdrop-blur-md p-8 rounded-lg shadow-2xl text-center text-white w-full max-w-sm border border-gray-700">
-            <h1 class="text-5xl font-bold mb-2 game-title text-blue-400">TANQUES</h1>
-            <p class="text-gray-400 mb-6">Batalla de Equipos</p>
-            <p id="auth-error" class="text-red-400 mb-4 text-sm h-5"></p>
-            <input type="text" id="username-input" placeholder="Nombre de usuario" class="w-full px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" autocomplete="username">
-            <input type="password" id="password-input" placeholder="Contraseña" class="w-full px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" autocomplete="current-password">
-            <button id="login-register-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 transform hover:scale-105">
-                Entrar / Registrarse
-            </button>
-        </div>
-    </div>
-    
-    <!-- Mensaje de muerte -->
-    <div id="death-message" class="hidden absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 backdrop-filter backdrop-blur-sm">
-        <div class="text-center text-white">
-            <h2 class="text-5xl font-bold mb-4 game-title">¡ELIMINADO!</h2>
-            <button id="respawn-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-md transition duration-300 text-xl transform hover:scale-105">
-                Reaparecer
-            </button>
-        </div>
-    </div>
-
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, serverTimestamp, updateDoc, getDocs, getDoc, query, orderBy, limit, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // --- MODELO (Estado de la Aplicación) ---
+        let chatHistory = [];
+        let currentSystemPrompt = "";
+        let replyingToMessage = null;
+        let selectionRange = null;
 
-        // --- Configuración de Firebase ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDk7UWd_A3-pAgeIiYP-bdAskuuk3wgtIE",
-            authDomain: "tanques-e1a74.firebaseapp.com",
-            projectId: "tanques-e1a74",
-            storageBucket: "tanques-e1a74.appspot.com",
-            messagingSenderId: "1068481268886",
-            appId: "1:1068481268886:web:62fc89493b3ab3f68f46b7",
-            measurementId: "G-J63P0LFMQB"
+        // --- DEFINICIONES DE PERSONALIDAD (Con Widgets) ---
+        // CORRECCIÓN: Instrucciones MÁS ESTRICTAS para la IA.
+        const systemPrompts = {
+            profesional: `Eres AURA, un asistente de IA profesional. Eres directo, formal y conciso. No usas emojis ni stickers.
+HERRAMIENTAS:
+- ¡REGLA 1! Si el usuario pide un video de YouTube, DEBES: 1. Usar la búsqueda de Google para encontrar el VIDEO_ID y Título. 2. Responder SÓLAMENTE con el formato: \`[YOUTUBE: "VIDEO_ID_REAL", "Título del Video"]\`.
+- ¡REGLA 2! Si el usuario pide una ubicación en un mapa, DEBES: 1. Responder SÓLAMENTE con el formato: \`[MAPS: "nombre del lugar o dirección"]\`.
+- ¡REGLA 3! Si el usuario pide código, DEBES generarlo. Tu respuesta DEBE ser SÓLO el bloque de código. NO añadas texto explicativo antes o después del bloque de código, a menos que el usuario pida una explicación. Responde SÓLO con \`\`\`language\n...código...\n\`\`\`.`,
+            
+            amistoso: `Eres AURA, un asistente de IA amigable. Tu tono es casual y cálido. Puedes usar emojis estándar (😊, 👍) y los siguientes stickers de gatos (úsalos con moderación) usando sus tokens:
+- [CAT_MEOWL]: (https://cdn3.emoji.gg/emojis/621730-meowl.png) Para sorpresa.
+- [CAT_GIF]: (https://cdn3.emoji.gg/emojis/353281-cat.gif) Para felicidad.
+- [CAT_PNG]: (https://cdn3.emoji.gg/emojis/454661-cat.png) Neutral.
+- [CAT_BLUSH]: (https://cdn3.emoji.gg/emojis/403168-blushing-critter.png) Para gratitud.
+- [CAT_THINK]: (https://cdn3.emoji.gg/emojis/339345-cathink.png) Pensando.
+HERRAMIENTAS:
+- ¡REGLA 1! Si el usuario pide un video de YouTube, DEBES: 1. Usar la búsqueda de Google para encontrar un VIDEO_ID y Título. 2. Responder con texto amigable Y el widget, e.g., "¡Claro! Aquí tienes: \`[YOUTUBE: "VIDEO_ID_REAL", "Título del Video"]\`".
+- ¡REGLA 2! Si el usuario pide un mapa, DEBES responder "¡Encontrado! \`[MAPS: "nombre del lugar"]\`".
+- ¡REGLA 3! Si el usuario pide código, DEBES generarlo y responder con una breve introducción Y el bloque de código. Tu respuesta DEBE CONTENER \`\`\`language\n...código...\n\`\`\`.`,
+            
+            creativo: `Eres AURA, un asistente de IA creativo. Usas un lenguaje expresivo y los stickers de gatos (sin exagerar).
+- [CAT_MEOWL]: ¡Sorpresa!
+- [CAT_GIF]: ¡Emoción!
+- [CAT_PNG]: ¡Neutral!
+- [CAT_BLUSH]: ¡Awww!
+- [CAT_THINK]: Hmmm... ¡pensando!
+HERRAMIENTAS:
+- ¡REGLA 1! Si el usuario pide un video de YouTube, DEBES: 1. Usar la búsqueda de Google para encontrar un VIDEO_ID y Título. 2. Responder creativamente, e.g., "¡Una gran elección! 🎶 \`[YOUTUBE: "VIDEO_ID_REAL", "Título del Video"]\`".
+- ¡REGLA 2! Si el usuario pide un mapa, DEBES responder "¡Rumbo a la aventura! 🗺️ \`[MAPS: "nombre del lugar"]\`".
+- ¡REGLA 3! Si el usuario pide código, DEBES generarlo y responder con una introducción creativa Y el bloque de código. Tu respuesta DEBE CONTENER \`\`\`language\n...código...\n\`\`\`.`
         };
-        const appId = "tanques-e1a74";
         
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        const playersCollection = collection(db, `/artifacts/${appId}/public/data/tanks-players`);
-        const bulletsCollection = collection(db, `/artifacts/${appId}/public/data/tanks-bullets`);
-        const gameStateRef = doc(db, `/artifacts/${appId}/public/data/tanks-gamestate/scores`);
-        const chatCollection = collection(db, `/artifacts/${appId}/public/data/tanks-chat`);
-
-        // --- Constantes del Juego ---
-        const TANK_SIZE = 40;
-        const MAP_TILE_SIZE = 60;
-        const TURRET_LENGTH = TANK_SIZE * 0.9;
-        const TURRET_WIDTH = 10;
-        const BULLET_SIZE = 8;
-        const BULLET_SPEED = 12;
-        const MAX_HEALTH = 100;
-        const TANK_SPEED = 3.5;
-        const MAP = [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
-            [1,0,1,0,1,0,1,1,1,0,1,0,1,0,1],
-            [1,0,1,0,0,0,0,0,0,0,0,0,1,0,1],
-            [1,0,1,0,1,1,1,0,1,1,1,0,1,0,1],
-            [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1],
-            [1,1,1,1,1,0,1,0,1,0,1,1,1,1,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,0,1,0,1,0,1,1,1,1,1],
-            [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1],
-            [1,0,1,0,1,1,1,0,1,1,1,0,1,0,1],
-            [1,0,1,0,0,0,0,0,0,0,0,0,1,0,1],
-            [1,0,1,0,1,0,1,1,1,0,1,0,1,0,1],
-            [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        ];
-        const MAP_WIDTH = MAP[0].length * MAP_TILE_SIZE;
-        const MAP_HEIGHT = MAP.length * MAP_TILE_SIZE;
+        // Mapa de Emojis/Stickers
+        const emojiMap = {
+            "[CAT_MEOWL]": "https://cdn3.emoji.gg/emojis/621730-meowl.png",
+            "[CAT_GIF]": "https://cdn3.emoji.gg/emojis/353281-cat.gif",
+            "[CAT_PNG]": "https://cdn3.emoji.gg/emojis/454661-cat.png",
+            "[CAT_BLUSH]": "https://cdn3.emoji.gg/emojis/403168-blushing-critter.png",
+            "[CAT_THINK]": "https://cdn3.emoji.gg/emojis/339345-cathink.png"
+        };
         
-        // --- Variables del Juego ---
-        let localPlayer = null;
-        let players = {};
-        let bullets = {};
-        let effects = [];
-        let mouse = { x: 0, y: 0 };
-        let camera = { x: 0, y: 0 };
-        let teamScores = { red: 0, blue: 0 };
-        const keys = {};
-        let unsubscribes = [];
-        let isMobile = false;
-        let audioStarted = false;
-        let animationFrameId;
-
-        // --- Elementos de la UI ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const joinScreen = document.getElementById('join-screen');
-        const usernameInput = document.getElementById('username-input');
-        const passwordInput = document.getElementById('password-input');
-        const loginRegisterButton = document.getElementById('login-register-button');
-        const authError = document.getElementById('auth-error');
-        const playerInfo = document.getElementById('player-info');
-        const deathMessage = document.getElementById('death-message');
-        const respawnButton = document.getElementById('respawn-button');
-        const logoutButton = document.getElementById('logout-button');
-        const leaderboardContainer = document.getElementById('leaderboard-container');
-        const leaderboardList = document.getElementById('leaderboard-list');
+        // --- SELECTORES DEL DOM ---
+        const loadingScreen = document.getElementById('loading-screen');
+        const personalityModal = document.getElementById('personality-modal');
+        const personalityOptions = document.getElementById('personality-options');
+        const chatContainer = document.getElementById('chat-container');
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
         const chatInput = document.getElementById('chat-input');
-        const sendChatButton = document.getElementById('send-chat-button');
-        const chatMessages = document.getElementById('chat-messages');
-        const joystickContainer = document.getElementById('joystick-container');
-        const joystickThumb = document.getElementById('joystick-thumb');
-
-        // --- Sonido ---
-        let shootSound, hitSound, explosionSound;
-        function setupSounds() {
-            shootSound = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.05, release: 0.1 } }).toDestination();
-            hitSound = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.1, sustain: 0 } }).toDestination();
-            explosionSound = new Tone.MembraneSynth({ pitchDecay: 0.05, octaves: 10, envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: 'exponential' } }).toDestination();
-        }
-
-        async function startAudioContext() {
-            if (audioStarted) return;
-            await Tone.start();
-            setupSounds();
-            audioStarted = true;
-        }
+        const sendButton = document.getElementById('send-button');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const clearChatButton = document.getElementById('clear-chat-button');
+        const headerPersonality = document.getElementById('header-personality');
+        const themeToggleButton = document.getElementById('theme-toggle-button');
         
-        // --- Lógica Principal del Juego ---
-        
-        function detectDevice() {
-            isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            if (isMobile) {
-                joystickContainer.style.display = 'block';
-                setupMobileControls();
-            }
-        }
+        const replyingToBar = document.getElementById('replying-to-bar');
+        const replyingToText = document.getElementById('replying-to-text');
+        const cancelReplyButton = document.getElementById('cancel-reply');
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
+        const emojiToggle = document.getElementById('emoji-toggle');
+        const emojiPicker = document.getElementById('emoji-picker');
 
-        async function assignTeam() {
-            const snapshot = await getDocs(playersCollection);
-            let redCount = 0; let blueCount = 0;
-            snapshot.forEach(doc => { doc.data().team === 'red' ? redCount++ : blueCount++; });
-            return redCount <= blueCount ? 'red' : 'blue';
-        }
+        // --- CONTROLADORES DE EVENTOS ---
 
-        async function createPlayerDocument(user, name) {
-            const team = await assignTeam();
-            const spawnPoint = getSpawnPoint();
-            const newPlayer = {
-                id: user.uid, name, team,
-                x: spawnPoint.x, y: spawnPoint.y,
-                angle: 0, health: MAX_HEALTH, score: 0, isDead: false,
-                lastSeen: serverTimestamp()
-            };
-            await setDoc(doc(playersCollection, user.uid), newPlayer);
-            const scoreDoc = await getDoc(gameStateRef);
-            if (!scoreDoc.exists()) await setDoc(gameStateRef, { red: 0, blue: 0 });
-        }
-
-        function getSpawnPoint() {
-            let x, y, isSafe;
-            const halfTank = TANK_SIZE / 2;
-            let attempts = 0;
-            do {
-                isSafe = true;
-                x = Math.random() * (MAP_WIDTH - MAP_TILE_SIZE * 2) + MAP_TILE_SIZE;
-                y = Math.random() * (MAP_HEIGHT - MAP_TILE_SIZE * 2) + MAP_TILE_SIZE;
-                
-                const checks = [ {dx: 0, dy: 0}, {dx: halfTank, dy: halfTank}, {dx: -halfTank, dy: -halfTank}, {dx: halfTank, dy: -halfTank}, {dx: -halfTank, dy: halfTank} ];
-
-                for(const check of checks) {
-                    const gridX = Math.floor((x + check.dx) / MAP_TILE_SIZE);
-                    const gridY = Math.floor((y + check.dy) / MAP_TILE_SIZE);
-                    if (MAP[gridY]?.[gridX] === 1) {
-                        isSafe = false;
-                        break;
-                    }
+        window.onload = () => {
+            setTimeout(() => {
+                loadingScreen.classList.add('fade-out');
+                if (!loadChatFromStorage()) {
+                    personalityModal.classList.remove('hidden');
+                } else {
+                    chatContainer.classList.remove('hidden');
                 }
-                attempts++;
-            } while (!isSafe && attempts < 100);
-            return { x, y };
-        }
+            }, 1500);
+        };
 
-        function checkWallCollision(x, y, size) {
-            const radius = size / 2;
-            const gridX1 = Math.floor((x - radius) / MAP_TILE_SIZE);
-            const gridY1 = Math.floor((y - radius) / MAP_TILE_SIZE);
-            const gridX2 = Math.floor((x + radius) / MAP_TILE_SIZE);
-            const gridY2 = Math.floor((y + radius) / MAP_TILE_SIZE);
-            return MAP[gridY1]?.[gridX1] === 1 || MAP[gridY1]?.[gridX2] === 1 || MAP[gridY2]?.[gridX1] === 1 || MAP[gridY2]?.[gridX2] === 1;
-        }
+        personalityOptions.addEventListener('click', (e) => {
+            const selectedOption = e.target.closest('[data-personality]');
+            if (selectedOption) {
+                const personality = selectedOption.dataset.personality;
+                selectPersonality(personality, selectedOption.querySelector('h3').textContent);
+            }
+        });
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleSendMessage();
+        });
         
-        function handleInput() {
-            if (!localPlayer || localPlayer.isDead) return;
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+            }
+        });
+        
+        chatInput.addEventListener('blur', () => {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                selectionRange = selection.getRangeAt(0);
+            }
+        });
+         chatInput.addEventListener('click', () => {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                selectionRange = selection.getRangeAt(0);
+            }
+        });
 
-            let dx = 0;
-            let dy = 0;
 
-            if (isMobile) {
-                const joystickInput = getJoystickInput();
-                dx = joystickInput.dx;
-                dy = joystickInput.dy;
+        clearChatButton.addEventListener('click', () => {
+            chatHistory = [];
+            chatWindow.innerHTML = '';
+            localStorage.removeItem('auraChatHistory');
+            localStorage.removeItem('auraSystemPrompt');
+            localStorage.removeItem('auraPersonalityName');
+            addWelcomeMessage();
+        });
+
+        cancelReplyButton.addEventListener('click', () => {
+            replyingToMessage = null;
+            replyingToBar.classList.add('hidden');
+        });
+
+        emojiToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            emojiPicker.classList.toggle('hidden');
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!emojiPicker.classList.contains('hidden') && !emojiPicker.contains(e.target) && !emojiToggle.contains(e.target)) {
+                emojiPicker.classList.add('hidden');
+            }
+        });
+
+        emojiPicker.addEventListener('click', (e) => {
+            if (e.target.dataset.emoji) {
+                const token = e.target.dataset.emoji;
+                const src = e.target.src;
+                
+                const imgHtml = `<img src="${src}" data-emoji="${token}" class="chat-input-emoji" alt="${token}" contenteditable="false">`;
+                
+                insertHtmlAtCursor(imgHtml);
+                
+                emojiPicker.classList.add('hidden');
+            }
+        });
+
+        chatWindow.addEventListener('click', (e) => {
+            const copyBtn = e.target.closest('.copy-btn');
+            const replyBtn = e.target.closest('.reply-btn');
+            const regenerateBtn = e.target.closest('.regenerate-btn');
+            const copyCodeBtn = e.target.closest('.copy-code-btn');
+            
+            if (copyBtn) handleCopy(copyBtn);
+            if (replyBtn) handleReply(replyBtn.dataset.messageId);
+            if (regenerateBtn) handleRegenerate(regenerateBtn.dataset.messageId);
+            if (copyCodeBtn) handleCopyCode(copyCodeBtn);
+        });
+        
+        themeToggleButton.addEventListener('click', toggleTheme);
+
+        // --- FUNCIONES PRINCIPALES ---
+
+        function insertHtmlAtCursor(html) {
+            chatInput.focus();
+            let sel, range;
+            
+            if (selectionRange && chatInput.contains(selectionRange.commonAncestorContainer)) {
+                sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(selectionRange);
             } else {
-                if (keys['w'] || keys['W'] || keys['ArrowUp']) dy -= 1;
-                if (keys['s'] || keys['S'] || keys['ArrowDown']) dy += 1;
-                if (keys['a'] || keys['A'] || keys['ArrowLeft']) dx -= 1;
-                if (keys['d'] || keys['D'] || keys['ArrowRight']) dx += 1;
+                sel = window.getSelection();
+                range = document.createRange();
+                range.selectNodeContents(chatInput);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
             }
 
-            if (dx !== 0 || dy !== 0) {
-                const mag = Math.sqrt(dx * dx + dy * dy);
-                const moveX = localPlayer.x + (dx / mag) * TANK_SPEED;
-                const moveY = localPlayer.y + (dy / mag) * TANK_SPEED;
-                if (!checkWallCollision(moveX, localPlayer.y, TANK_SIZE)) localPlayer.x = moveX;
-                if (!checkWallCollision(localPlayer.x, moveY, TANK_SIZE)) localPlayer.y = moveY;
+            const el = document.createElement("div");
+            el.innerHTML = html;
+            const frag = document.createDocumentFragment();
+            let node, lastNode;
+            
+            while ((node = el.firstChild)) {
+                lastNode = frag.appendChild(node);
             }
+            
+            range = sel.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(frag);
 
-            if (!isMobile) {
-                localPlayer.angle = Math.atan2(mouse.y - canvas.height / 2, mouse.x - canvas.width / 2);
+            if (lastNode) {
+                range = range.cloneRange();
+                range.setStartAfter(lastNode);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+                selectionRange = range;
             }
-        }
-
-        function takeDamage(amount, attackerId) {
-            if (!localPlayer || localPlayer.isDead) return;
-            const attacker = players[attackerId];
-            if (!attacker || attacker.team === localPlayer.team) return; 
-            localPlayer.health -= amount;
-            localPlayer.lastHitTime = Date.now();
-            if (audioStarted) hitSound.triggerAttackRelease("0.1");
-            updateUI();
-            if (localPlayer.health <= 0) {
-                localPlayer.health = 0;
-                localPlayer.isDead = true;
-                playerDied(attackerId);
-            }
-            updateDoc(doc(playersCollection, localPlayer.id), { health: localPlayer.health, isDead: localPlayer.isDead });
-        }
-
-        async function playerDied(killerId) {
-             playerInfo.classList.add('hidden');
-             deathMessage.classList.remove('hidden');
-             createExplosion(localPlayer.x, localPlayer.y);
-             if (audioStarted) explosionSound.triggerAttackRelease("C1", "0.5s");
-             const killer = players[killerId];
-             if (killer && killerId !== localPlayer.id) {
-                 const newScore = (killer.score || 0) + 1;
-                 updateDoc(doc(playersCollection, killerId), { score: newScore });
-                 const teamToUpdate = killer.team === 'red' ? 'red' : 'blue';
-                 const currentScores = (await getDoc(gameStateRef)).data() || { red: 0, blue: 0 };
-                 const newTeamScore = (currentScores[teamToUpdate] || 0) + 1;
-                 await updateDoc(gameStateRef, { [teamToUpdate]: newTeamScore });
-             }
         }
         
-        function respawn() {
-            if (!localPlayer) return;
-            const spawnPoint = getSpawnPoint();
-            localPlayer.x = spawnPoint.x; localPlayer.y = spawnPoint.y;
-            localPlayer.health = MAX_HEALTH; localPlayer.isDead = false;
-            updateDoc(doc(playersCollection, localPlayer.id), { x: localPlayer.x, y: localPlayer.y, health: localPlayer.health, isDead: localPlayer.isDead });
-            deathMessage.classList.add('hidden');
-            playerInfo.classList.remove('hidden');
+        function getTextFromContentEditable() {
+            let text = "";
+            chatInput.childNodes.forEach(node => {
+                if (node.nodeType === 3) { // Texto
+                    text += node.textContent;
+                } else if (node.nodeType === 1) { // Elemento
+                    if (node.tagName === 'IMG' && node.classList.contains('chat-input-emoji')) {
+                        text += ` ${node.dataset.emoji} `;
+                    } else if (node.tagName === 'DIV' || node.tagName === 'BR') {
+                        text += '\n';
+                    } else {
+                        text += node.textContent;
+                    }
+                }
+            });
+            return text.trim().replace(/\n/g, ' '); // La IA no necesita saltos de línea del input
         }
 
-        // --- Bucle y Renderizado ---
-        let lastUpdateTime = 0;
-        function gameLoop(timestamp) {
-            if (localPlayer) {
-                handleInput();
+        function selectPersonality(personality, personalityName) {
+            currentSystemPrompt = systemPrompts[personality];
+            headerPersonality.textContent = personalityName;
+            
+            personalityModal.classList.add('hidden');
+            chatContainer.classList.remove('hidden');
+            
+            chatHistory = [];
+            chatWindow.innerHTML = '';
+            addWelcomeMessage();
+            
+            saveChatToStorage(personalityName);
+        }
+
+        function addWelcomeMessage() {
+            let welcomeText = "¡Hola! Soy AURA. ¿En qué puedo ayudarte hoy?";
+            if (currentSystemPrompt.includes("Amistoso")) {
+                welcomeText = "¡Hola! Soy AURA 😊 ¿Listo para charlar?";
+            } else if (currentSystemPrompt.includes("Creativo")) {
+                welcomeText = "¡Saludos! Soy AURA ✨ ¿Qué idea increíble vamos a explorar hoy? [CAT_THINK]";
+            }
+            
+            const messageId = `ai_welcome_${Date.now()}`;
+            addMessageToUI(messageId, 'model', welcomeText);
+            chatHistory.push({ role: 'model', parts: [{ text: welcomeText }] });
+            saveChatToStorage();
+        }
+        
+        function hideAllRegenerateButtons() {
+            document.querySelectorAll('.regenerate-btn-container').forEach(btn => {
+                btn.classList.add('hidden');
+            });
+        }
+
+        async function handleSendMessage() {
+            const userMessage = getTextFromContentEditable();
+            if (!userMessage) return;
+
+            hideAllRegenerateButtons();
+            emojiPicker.classList.add('hidden');
+
+            let fullUserMessage = userMessage;
+            if (replyingToMessage) {
+                const originalMessage = document.getElementById(replyingToMessage)?.dataset.rawText || "";
+                fullUserMessage = `(Respondiendo a: "${originalMessage.substring(0, 30)}..."): ${userMessage}`;
+                replyingToMessage = null;
+                replyingToBar.classList.add('hidden');
+            }
+
+            const userMessageId = `user_${Date.now()}`;
+            addMessageToUI(userMessageId, 'user', userMessage);
+            
+            chatHistory.push({ role: 'user', parts: [{ text: fullUserMessage }] });
+            saveChatToStorage();
+
+            chatInput.innerHTML = '';
+            showTypingIndicator();
+
+            await getAIResponse();
+        }
+        
+        async function handleRegenerate(aiMessageId) {
+            hideAllRegenerateButtons();
+            
+            document.getElementById(aiMessageId)?.remove();
+            if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].role === 'model') {
+                chatHistory.pop();
+            }
+            
+            if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].role === 'user') {
+                saveChatToStorage();
+                showTypingIndicator();
+                await getAIResponse();
+            }
+        }
+
+        async function getAIResponse() {
+            try {
+                const aiResponse = await callGeminiAPI(chatHistory, currentSystemPrompt);
                 
-                if (timestamp - lastUpdateTime > 1000 / 30) {
-                     if(!localPlayer.isDead) updateGameState();
-                     lastUpdateTime = timestamp;
-                }
+                const aiMessageId = `ai_${Date.now()}`;
+                addMessageToUI(aiMessageId, 'model', aiResponse, true);
+                chatHistory.push({ role: 'model', parts: [{ text: aiResponse }] });
+                saveChatToStorage();
 
-                updatePlayersInterpolation();
-                updateBullets();
-                updateEffects();
-                draw();
-            }
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-
-        function updatePlayersInterpolation() {
-            for(const id in players) {
-                const p = players[id];
-                if(id === localPlayer?.id) continue;
-                if(p.targetX) {
-                    p.x += (p.targetX - p.x) * 0.3;
-                    p.y += (p.targetY - p.y) * 0.3;
-                    let angleDiff = p.angle - p.currentAngle;
-                    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-                    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-                    p.currentAngle += angleDiff * 0.3;
-                }
+            } catch (error) {
+                console.error("Error al llamar a la API:", error);
+                addMessageToUI(`error_${Date.now()}`, 'model', "Lo siento, algo salió mal. Por favor, inténtalo de nuevo.");
+            } finally {
+                hideTypingIndicator();
+                chatWindow.scrollTop = chatWindow.scrollHeight;
             }
         }
 
-        function updateBullets() {
-            for (const id in bullets) {
-                const bullet = bullets[id];
-                bullet.x += bullet.vx;
-                bullet.y += bullet.vy;
-                if (checkWallCollision(bullet.x, bullet.y, BULLET_SIZE)) {
-                    deleteDoc(doc(bulletsCollection, id)); continue;
-                }
-                const now = Date.now();
-                if (bullet.createdAt?.toMillis && now - bullet.createdAt.toMillis() > 4000) {
-                    deleteDoc(doc(bulletsCollection, id));
-                }
-            }
-        }
+        async function callGeminiAPI(history, systemPrompt) {
+            const apiKey = "AIzaSyCv1F7ewlkec_M_J5fKw94zOyvgqLZUQ2M";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
-        function updateEffects() {
-            effects = effects.filter(effect => !effect.isFinished());
-            effects.forEach(effect => effect.update());
-        }
-
-        function draw() {
-            if (!localPlayer) return;
-            camera.x += (localPlayer.x - camera.x) * 0.2;
-            camera.y += (localPlayer.y - camera.y) * 0.2;
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y);
-            
-            const view = {
-                x1: camera.x - canvas.width / 2, y1: camera.y - canvas.height / 2,
-                x2: camera.x + canvas.width / 2, y2: camera.y + canvas.height / 2,
+            const payload = {
+                contents: history,
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                tools: [{ "google_search": {} }],
             };
 
-            drawMap(view);
+            const response = await retryWithBackoff(() => fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }));
 
-            effects.forEach(effect => effect.draw(ctx));
-            for (const id in bullets) {
-                const b = bullets[id];
-                if(b.x > view.x1 - 10 && b.x < view.x2 + 10 && b.y > view.y1 - 10 && b.y < view.y2 + 10) drawBullet(b);
+            if (!response.ok) {
+                throw new Error(`Error de la API: ${response.statusText}`);
             }
-            const sortedPlayers = Object.values(players).sort((a,b) => a.y - b.y);
-            sortedPlayers.forEach(player => {
-                const pSize = TANK_SIZE / 2;
-                if(!player.isDead && player.x > view.x1 - pSize && player.x < view.x2 + pSize && player.y > view.y1 - pSize && player.y < view.y2 + pSize) drawTank(player);
+
+            const result = await response.json();
+            
+            console.log("Respuesta de Gemini:", result);
+
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!text) {
+                if (result.candidates?.[0]?.finishReason === 'SAFETY' || result.candidates?.[0]?.finishReason === 'RECITATION') {
+                    return "No puedo responder a eso, mi respuesta fue bloqueada por políticas de seguridad.";
+                }
+                 if (result.promptFeedback?.blockReason) {
+                    return `No puedo procesar esa solicitud. Razón: ${result.promptFeedback.blockReason}`;
+                 }
+                 throw new Error("Respuesta de la API vacía o mal formada.");
+            }
+            
+            return text;
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[m];
+            });
+        }
+        
+        function parseAndRenderContent(rawText) {
+            let text = rawText;
+            const placeholders = {};
+            let placeholderIndex = 0;
+
+            function addPlaceholder(htmlContent) {
+                const key = `__PLACEHOLDER_${placeholderIndex}__`;
+                placeholders[key] = htmlContent;
+                placeholderIndex++;
+                return key;
+            }
+
+            // 1. Extraer Bloques de Código
+            text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, language, code) => {
+                const langClass = language ? `language-${language}` : 'language-plaintext';
+                const escapedCode = escapeHTML(code);
+                const codeHtml = `
+                    <div class="code-block">
+                        <button class="copy-code-btn">Copiar</button>
+                        <pre><code class="${langClass}">${escapedCode}</code></pre>
+                    </div>
+                `;
+                return addPlaceholder(codeHtml);
             });
 
-            ctx.restore();
+            // 2. Extraer Widgets de YouTube (Formato PRO: ID y Título)
+            text = text.replace(/\[YOUTUBE: ["“”](.*?)["“”], ["“”](.*?)["“”]\]/g, (match, videoId, title) => {
+                const videoHtml = `
+                    <div class="widget-card">
+                        <div class="widget-card-header">
+                            <div class="widget-card-header-icon">
+                                <i data-feather="youtube" class="w-6 h-6 text-red-600 dark:text-red-400"></i>
+                            </div>
+                            <span class="widget-card-header-text">Video de YouTube</span>
+                        </div>
+                        <div class="widget-card-body">
+                            <p class="widget-card-title">${escapeHTML(title)}</p>
+                            <div class="youtube-embed">
+                                <iframe class="w-full h-full"
+                                    src="https://www.youtube.com/embed/${escapeHTML(videoId)}"
+                                    title="Reproductor de YouTube: ${escapeHTML(title)}"
+                                    frameborder="0" 
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                    allowfullscreen>
+                                </iframe>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return addPlaceholder(videoHtml);
+            });
+            
+            // 3. Extraer Widgets de Mapas (Formato PRO: Query)
+            text = text.replace(/\[MAPS: ["“”](.*?)["“”]\]/g, (match, query) => {
+                const encodedQuery = encodeURIComponent(query);
+                const mapHtml = `
+                    <div class="widget-card">
+                        <div class="widget-card-header">
+                            <div class="widget-card-header-icon">
+                                <i data-feather="map-pin" class="w-6 h-6 text-green-600 dark:text-green-400"></i>
+                            </div>
+                            <span class="widget-card-header-text">Ubicación de Google Maps</span>
+                        </div>
+                        <div class="widget-card-body">
+                            <p class="widget-card-title">${escapeHTML(query)}</p>
+                            <a href="https://www.google.com/maps/search/?api=1&query=${encodedQuery}" target="_blank" rel="noopener noreferrer" class="widget-card-link bg-green-600 hover:bg-green-700">
+                                Ver en Google Maps
+                            </a>
+                        </div>
+                    </div>
+                `;
+                return addPlaceholder(mapHtml);
+            });
+
+            // 4. CORRECCIÓN: Extraer Widgets de YouTube (Formato FALLBACK: Solo Query)
+            // Esto captura [YOUTUBE: "búsqueda..."] si la IA falla.
+            text = text.replace(/\[YOUTUBE: ["“”](.*?)["“”]\]/g, (match, query) => {
+                const encodedQuery = encodeURIComponent(query);
+                const fallbackHtml = `
+                    <div class="widget-card">
+                        <div class="widget-card-header">
+                            <div class="widget-card-header-icon">
+                                <i data-feather="youtube" class="w-6 h-6 text-red-600 dark:text-red-400"></i>
+                            </div>
+                            <span class="widget-card-header-text">Búsqueda de YouTube</span>
+                        </div>
+                        <div class="widget-card-body">
+                            <p class="widget-card-title">${escapeHTML(query)}</p>
+                            <a href="https://www.youtube.com/results?search_query=${encodedQuery}" target="_blank" rel="noopener noreferrer" class="widget-card-link bg-red-600 hover:bg-red-700">
+                                Buscar en YouTube
+                            </a>
+                        </div>
+                    </div>
+                `;
+                return addPlaceholder(fallbackHtml);
+            });
+
+
+            // 5. Extraer Stickers
+            text = text.replace(/\[(CAT_[A-Z]+)\]/g, (match, token) => {
+                const url = emojiMap[match];
+                return url ? addPlaceholder(`<img src="${url}" alt="${token}" class="ai-emoji">`) : match;
+            });
+            
+            // 6. Escapar el resto del HTML
+            let html = escapeHTML(text);
+
+            // 7. Aplicar Markdown (Negrita y Cursiva)
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+            
+            // 8. Manejar Saltos de Línea
+            html = html.replace(/\n/g, '<br>');
+
+            // 9. Re-insertar todos los Placeholders
+            html = html.replace(/__PLACEHOLDER_(\d+)__/g, (match, index) => {
+                return placeholders[match] || '';
+            });
+            
+            return html;
         }
 
-        function drawMap(view) {
-            const startCol = Math.max(0, Math.floor(view.x1 / MAP_TILE_SIZE));
-            const endCol = Math.min(MAP[0].length, Math.ceil(view.x2 / MAP_TILE_SIZE));
-            const startRow = Math.max(0, Math.floor(view.y1 / MAP_TILE_SIZE));
-            const endRow = Math.min(MAP.length, Math.ceil(view.y2 / MAP_TILE_SIZE));
-            ctx.fillStyle = "#a0aec0";
-            for (let y = startRow; y < endRow; y++) {
-                for (let x = startCol; x < endCol; x++) {
-                    if (MAP[y][x] === 1) {
-                        ctx.fillRect(x * MAP_TILE_SIZE, y * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE);
-                    }
-                }
+
+        function addMessageToUI(id, role, text, isLastAIMessage = false) {
+            const isUser = role === 'user';
+            
+            const formattedHTML = parseAndRenderContent(text);
+
+            const bubbleClasses = isUser
+                ? 'bg-zinc-700 text-white dark:bg-zinc-700 dark:text-zinc-100'
+                : 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 shadow-sm';
+
+            const justification = isUser ? 'justify-end' : 'justify-start';
+
+            const messageDiv = document.createElement('div');
+            messageDiv.id = id;
+            messageDiv.dataset.rawText = text;
+            messageDiv.className = `flex ${justification} message-bubble-container`;
+            
+            const bubbleWrapper = document.createElement('div');
+            bubbleWrapper.className = 'group relative max-w-lg lg:max-w-xl';
+
+            const bubble = document.createElement('div');
+            bubble.className = `p-4 rounded-2xl ${bubbleClasses} message-bubble w-full`;
+            
+            const contentContainer = document.createElement('div');
+            contentContainer.className = "message-content-wrapper";
+            contentContainer.innerHTML = formattedHTML;
+            bubble.appendChild(contentContainer);
+
+            contentContainer.querySelectorAll('pre code').forEach((block) => {
+                try {
+                    hljs.highlightElement(block);
+                } catch (e) { console.error("Error al resaltar sintaxis:", e); }
+            });
+
+            // Botones
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = `absolute -bottom-2 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 ease-out flex gap-1 ${isUser ? 'right-0' : 'left-0'}`;
+
+            const btnBaseClasses = 'p-1.5 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-full shadow-md hover:scale-110 hover:bg-white dark:hover:bg-zinc-700 transition-all';
+            const iconBaseClasses = 'w-4 h-4 text-zinc-600 dark:text-zinc-300';
+
+            const replyBtn = document.createElement('button');
+            replyBtn.dataset.messageId = id;
+            replyBtn.className = `reply-btn ${btnBaseClasses}`;
+            replyBtn.innerHTML = `<i data-feather="corner-up-left" class="${iconBaseClasses}"></i>`;
+            buttonsContainer.appendChild(replyBtn);
+
+            if (!isUser) {
+                const copyBtn = document.createElement('button');
+                copyBtn.dataset.messageId = id;
+                copyBtn.className = `copy-btn ${btnBaseClasses}`;
+                copyBtn.innerHTML = `<i data-feather="copy" class="${iconBaseClasses}"></i>`;
+                buttonsContainer.appendChild(copyBtn);
+                
+                const regenerateBtnContainer = document.createElement('div');
+                regenerateBtnContainer.className = `regenerate-btn-container ${isLastAIMessage ? '' : 'hidden'}`;
+                
+                const regenerateBtn = document.createElement('button');
+                regenerateBtn.dataset.messageId = id;
+                regenerateBtn.className = `regenerate-btn ${btnBaseClasses}`;
+                regenerateBtn.innerHTML = `<i data-feather="rotate-cw" class="${iconBaseClasses}"></i>`;
+                regenerateBtnContainer.appendChild(regenerateBtn);
+                buttonsContainer.appendChild(regenerateBtnContainer);
             }
+
+            bubbleWrapper.appendChild(bubble);
+            bubbleWrapper.appendChild(buttonsContainer);
+            messageDiv.appendChild(bubbleWrapper);
+            chatWindow.appendChild(messageDiv);
+            
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            feather.replace();
         }
 
-        function drawTank(player) {
-            ctx.save();
-            ctx.translate(player.x, player.y);
-            if (player.lastHitTime && Date.now() - player.lastHitTime < 150) {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.beginPath(); ctx.arc(0, 0, TANK_SIZE / 2 + 5, 0, Math.PI * 2); ctx.fill();
-            }
-            const displayAngle = player === localPlayer ? player.angle : (player.currentAngle !== undefined ? player.currentAngle : player.angle);
-            ctx.fillStyle = player.team === 'red' ? '#ef4444' : '#3b82f6';
-            ctx.beginPath(); ctx.arc(0, 0, TANK_SIZE / 2, 0, Math.PI * 2); ctx.fill();
-            ctx.save();
-            ctx.rotate(displayAngle);
-            ctx.fillStyle = "#a0aec0";
-            ctx.fillRect(0, -TURRET_WIDTH / 2, TURRET_LENGTH, TURRET_WIDTH);
-            ctx.restore();
-            ctx.strokeStyle = "#4a5568"; ctx.lineWidth = 3; ctx.stroke();
-            ctx.fillStyle = "white"; ctx.font = "14px sans-serif"; ctx.textAlign = "center";
-            ctx.shadowColor = 'black'; ctx.shadowBlur = 4;
-            ctx.fillText(player.name, 0, -TANK_SIZE / 2 - 15);
-            ctx.shadowBlur = 0;
-             if (player.health < MAX_HEALTH) {
-                ctx.fillStyle = "rgba(0,0,0,0.5)";
-                ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2 - 10, TANK_SIZE, 8);
-                ctx.fillStyle = player.health > MAX_HEALTH * 0.3 ? '#48bb78' : '#f56565';
-                ctx.fillRect(-TANK_SIZE / 2 + 1, -TANK_SIZE / 2 - 9, (TANK_SIZE - 2) * (player.health / MAX_HEALTH), 6);
-            }
-            ctx.restore();
-        }
-        
-        function drawBullet(b) { 
-            ctx.fillStyle = "#f56565"; ctx.beginPath(); ctx.arc(b.x, b.y, BULLET_SIZE / 2, 0, Math.PI * 2); ctx.fill(); 
+        function showTypingIndicator() {
+            typingIndicator.classList.remove('hidden');
+            chatWindow.scrollTop = chatWindow.scrollHeight;
         }
 
-        function updateUI() {
-             if (!localPlayer) return;
-             document.getElementById('health-bar').style.width = `${(localPlayer.health / MAX_HEALTH) * 100}%`;
-             document.getElementById('score-display').textContent = localPlayer.score || 0;
-             document.getElementById('blue-score').textContent = `Azul: ${teamScores.blue || 0}`;
-             document.getElementById('red-score').textContent = `Rojo: ${teamScores.red || 0}`;
-             leaderboardList.innerHTML = '';
-             const sortedPlayers = Object.values(players).sort((a, b) => (b.score || 0) - (a.score || 0));
-             sortedPlayers.slice(0, 5).forEach(p => {
-                 const li = document.createElement('li');
-                 const teamColor = p.team === 'red' ? 'text-red-400' : 'text-blue-400';
-                 li.className = 'flex justify-between';
-                 li.innerHTML = `<span class="${teamColor} truncate">${p.name}</span> <span>${p.score || 0}</span>`;
-                 leaderboardList.appendChild(li);
-             });
+        function hideTypingIndicator() {
+            typingIndicator.classList.add('hidden');
+        }
+
+        function handleReply(messageId) {
+            const messageElement = document.getElementById(messageId);
+            const messageText = messageElement.dataset.rawText;
+            
+            replyingToMessage = messageId;
+            replyingToText.textContent = `Respondiendo a: "${messageText.substring(0, 50)}..."`;
+            replyingToBar.classList.remove('hidden');
+            
+            chatInput.focus();
+        }
+
+        function handleCopy(copyBtnElement) {
+            const messageId = copyBtnElement.dataset.messageId;
+            const messageElement = document.getElementById(messageId);
+            const textToCopy = messageElement.dataset.rawText;
+            
+            copyToClipboard(textToCopy, copyBtnElement.querySelector('i'), 'copy');
         }
         
-        // --- Controles y Eventos ---
-        let joystickInput = { dx: 0, dy: 0 };
-        function getJoystickInput() { return joystickInput; }
-        function setupMobileControls() { /* ... sin cambios ... */ }
+        function handleCopyCode(copyCodeBtnElement) {
+            const codeElement = copyCodeBtnElement.parentElement.querySelector('pre code');
+            const textToCopy = codeElement.innerText;
+            
+            copyToClipboard(textToCopy, copyCodeBtnElement, 'Copiar', 'Copiado');
+        }
         
-        async function sendChatMessage() {
-            const text = chatInput.value.trim();
-            if (!text || !localPlayer || !localPlayer.team) {
-                console.error("No se puede enviar el mensaje: los datos del jugador están incompletos.", localPlayer);
-                return;
-            }
+        function copyToClipboard(textToCopy, feedbackElement, originalContent, successContent = 'check') {
             try {
-                await addDoc(chatCollection, {
-                    name: localPlayer.name,
-                    team: localPlayer.team,
-                    text: text,
-                    createdAt: serverTimestamp()
-                });
-                chatInput.value = '';
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                const isIcon = feedbackElement.tagName === 'I';
+                const originalText = isIcon ? originalContent : feedbackElement.textContent;
+                const successText = isIcon ? successContent : '¡Copiado!';
+
+                if (isIcon) {
+                    feedbackElement.setAttribute('data-feather', successText);
+                    feather.replace();
+                } else {
+                    feedbackElement.textContent = successText;
+                    feedbackElement.classList.add('bg-green-500');
+                }
+                
+                setTimeout(() => {
+                    if (isIcon) {
+                        feedbackElement.setAttribute('data-feather', originalText);
+                        feather.replace();
+                    } else {
+                        feedbackElement.textContent = originalText;
+                        feedbackElement.classList.remove('bg-green-500');
+                    }
+                }, 2000);
+
+            } catch (err) {
+                console.error('Error al copiar texto: ', err);
+            }
+        }
+
+        async function retryWithBackoff(fn, retries = 3, delay = 1000) {
+            try {
+                return await fn();
             } catch (error) {
-                console.error("Error al enviar el mensaje:", error);
-                authError.textContent = "Error al enviar mensaje.";
+                if (retries > 0) {
+                    console.warn(`Reintentando... quedan ${retries} intentos.`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return retryWithBackoff(fn, retries - 1, delay * 2);
+                } else {
+                    throw error;
+                }
             }
         }
-        class Particle { /* ... sin cambios ... */ }
-        function createExplosion(x, y) { /* ... sin cambios ... */ }
-
-        function init() {
-            detectDevice(); resizeCanvas(); window.addEventListener('resize', resizeCanvas);
-            if (!isMobile) {
-                window.addEventListener('keydown', (e) => { keys[e.key] = true; });
-                window.addEventListener('keyup', (e) => { keys[e.key] = false; });
-                canvas.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
-                let shootTimeout;
-                canvas.addEventListener('mousedown', (e) => { if(e.button === 0) {shoot(); shootTimeout = setInterval(shoot, 150);} });
-                canvas.addEventListener('mouseup', (e) => { if(e.button === 0) clearInterval(shootTimeout); });
+        
+        // --- FUNCIONES DE TEMA Y ALMACENAMIENTO ---
+        
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
+            feather.replace();
+        }
+        
+        function saveChatToStorage(personalityName) {
+            try {
+                localStorage.setItem('auraChatHistory', JSON.stringify(chatHistory));
+                if (currentSystemPrompt) {
+                    localStorage.setItem('auraSystemPrompt', currentSystemPrompt);
+                }
+                if (personalityName) {
+                    localStorage.setItem('auraPersonalityName', personalityName);
+                }
+            } catch (e) {
+                console.error("Error al guardar en localStorage:", e);
             }
-            chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatMessage(); });
-            sendChatButton.addEventListener('click', sendChatMessage);
-            
-            // Start the game loop immediately
-            animationFrameId = requestAnimationFrame(gameLoop);
-            
-            onAuthStateChanged(auth, (user) => {
-                stopGame(); // Reset game state on any auth change
-                if (user) {
-                    // When user is authenticated, listen specifically to their player document
-                    const unsubSelf = onSnapshot(doc(playersCollection, user.uid), (playerDoc) => {
-                        if (playerDoc.exists() && !localPlayer) {
-                            // Player document exists and game hasn't started yet, so start it.
-                            startGame(user, playerDoc.data());
-                        }
+        }
+        
+        function loadChatFromStorage() {
+            try {
+                const storedHistory = localStorage.getItem('auraChatHistory');
+                const storedPrompt = localStorage.getItem('auraSystemPrompt');
+                const storedName = localStorage.getItem('auraPersonalityName');
+                
+                if (storedHistory && storedPrompt && storedName) {
+                    chatHistory = JSON.parse(storedHistory);
+                    currentSystemPrompt = storedPrompt;
+                    headerPersonality.textContent = storedName;
+                    
+                    chatWindow.innerHTML = '';
+                    chatHistory.forEach((msg, index) => {
+                        const isLast = index === chatHistory.length - 1 && msg.role === 'model';
+                        addMessageToUI(`loaded_${index}`, msg.role, msg.parts[0].text, isLast);
                     });
-                    unsubscribes.push(unsubSelf); // Add to unsub list to be cleaned up on logout
+                    
+                    setTimeout(() => {
+                         chatWindow.scrollTop = chatWindow.scrollHeight;
+                    }, 100);
+                    
+                    return true;
                 }
-            });
-
-            loginRegisterButton.addEventListener('click', handleLoginRegister);
-            respawnButton.addEventListener('click', respawn);
-            logoutButton.addEventListener('click', () => signOut(auth));
-        }
-        
-        init();
-        
-        async function handleLoginRegister() {
-            await startAudioContext();
-            const username = usernameInput.value.trim(); const password = passwordInput.value.trim();
-            authError.textContent = '';
-            if (!username || !password) { authError.textContent = 'Por favor, ingresa usuario y contraseña.'; return; }
-            if (password.length < 6) { authError.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
-            const email = `${username.replace(/\s+/g, '_')}@tanksgame.io`;
-            try { await signInWithEmailAndPassword(auth, email, password); } 
-            catch (error) {
-                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                    try {
-                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                        await createPlayerDocument(userCredential.user, username);
-                    } catch (registerError) { authError.textContent = 'No se pudo registrar. Intenta con otro nombre.'; }
-                } else { authError.textContent = 'Error al iniciar sesión. Verifica tus datos.'; }
+                return false;
+            } catch (e) {
+                console.error("Error al cargar de localStorage:", e);
+                return false;
             }
         }
 
-        function setupGameListeners() {
-            // This function is now called only when the local player is fully initialized
-            const unsubPlayers = onSnapshot(playersCollection, (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    const data = change.doc.data(); const id = change.doc.id;
-                    if (id === localPlayer?.id) {
-                        // For local player, only sync essential data from server, not position
-                        Object.assign(localPlayer, { health: data.health, score: data.score, isDead: data.isDead, team: data.team });
-                        return;
-                    }
-
-                    if (change.type === "added") {
-                        if (!players[id]) {
-                            players[id] = { id, currentAngle: data.angle, ...data };
-                        }
-                    } else if (change.type === "modified") {
-                        if (players[id]) {
-                            players[id].targetX = data.x;
-                            players[id].targetY = data.y;
-                            players[id].angle = data.angle;
-                            Object.assign(players[id], data); 
-                        }
-                    } else if (change.type === "removed") {
-                        delete players[id];
-                    }
-                });
-                updateUI();
-            });
-            unsubscribes.push(unsubPlayers);
-
-            const unsubBullets = onSnapshot(bulletsCollection, (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === "added") {
-                        if (!bullets[change.doc.id]) bullets[change.doc.id] = { id: change.doc.id, ...change.doc.data() };
-                    } else if (change.type === "removed") delete bullets[change.doc.id];
-                });
-            });
-            unsubscribes.push(unsubBullets);
-
-            const unsubScores = onSnapshot(gameStateRef, (doc) => {
-                teamScores = doc.exists() ? doc.data() : { red: 0, blue: 0 };
-                updateUI();
-            });
-            unsubscribes.push(unsubScores);
-
-            const q = query(chatCollection, orderBy("createdAt", "desc"), limit(20));
-            const unsubChat = onSnapshot(q, (snapshot) => {
-                chatMessages.innerHTML = '';
-                snapshot.docs.reverse().forEach(doc => {
-                    const msg = doc.data();
-                    const msgEl = document.createElement('div');
-                    const nameColor = msg.team === 'red' ? 'text-red-400' : 'text-blue-400';
-                    msgEl.innerHTML = `<strong class="${nameColor}">${msg.name}:</strong> ${msg.text}`;
-                    chatMessages.appendChild(msgEl);
-                });
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            });
-            unsubscribes.push(unsubChat);
-        }
-
-        function startGame(user, playerData) {
-            localPlayer = playerData;
-            
-            joinScreen.classList.add('hidden');
-            canvas.classList.remove('hidden');
-            playerInfo.classList.remove('hidden');
-            leaderboardContainer.classList.remove('hidden');
-            document.getElementById('player-name-display').textContent = localPlayer.name;
-            
-            updateUI();
-            setupGameListeners(); // Now we set up all other listeners
-        }
-
-        function stopGame() { 
-            if (unsubscribes) {
-                unsubscribes.forEach(unsub => unsub());
-                unsubscribes = [];
-            }
-            localPlayer = null; 
-            players = {}; 
-            bullets = {};
-            joinScreen.classList.remove('hidden');
-            canvas.classList.add('hidden');
-            playerInfo.classList.add('hidden');
-            leaderboardContainer.classList.add('hidden');
-            deathMessage.classList.add('hidden');
-        }
-
-        function shoot() {
-             if (!localPlayer || localPlayer.isDead) return;
-             if (audioStarted) shootSound.triggerAttackRelease("C5", "0.1");
-             const bulletId = doc(collection(db, 'dummy')).id;
-             const newBullet = {
-                 id: bulletId, ownerId: localPlayer.id, team: localPlayer.team,
-                 x: localPlayer.x + Math.cos(localPlayer.angle) * TURRET_LENGTH,
-                 y: localPlayer.y + Math.sin(localPlayer.angle) * TURRET_LENGTH,
-                 vx: Math.cos(localPlayer.angle) * BULLET_SPEED,
-                 vy: Math.sin(localPlayer.angle) * BULLET_SPEED,
-                 createdAt: serverTimestamp()
-             };
-             setDoc(doc(bulletsCollection, bulletId), newBullet);
-        }
         
-        function updateGameState() {
-            if (!localPlayer || localPlayer.isDead) return;
-            updateDoc(doc(playersCollection, localPlayer.id), {
-                x: localPlayer.x, y: localPlayer.y, angle: localPlayer.angle, lastSeen: serverTimestamp()
-            });
-            for (const bulletId in bullets) {
-                const bullet = bullets[bulletId];
-                if (bullet.ownerId === localPlayer.id || bullet.team === localPlayer.team) continue;
-                const distance = Math.hypot(localPlayer.x - bullet.x, localPlayer.y - bullet.y);
-                if (distance < TANK_SIZE / 2 + BULLET_SIZE / 2) {
-                    takeDamage(10, bullet.ownerId);
-                    deleteDoc(doc(bulletsCollection, bulletId));
-                    break; 
-                }
-            }
-        }
+        // --- INICIALIZACIÓN ---
+        feather.replace(); // Activar iconos iniciales
+
     </script>
 </body>
 </html>
