@@ -1189,10 +1189,11 @@
                         let tradeProbability = 0.0; 
 
                         if (allTimeHigh > 0 && (currentPrice / allTimeHigh) < 0.2) {
+                            // Moneda muerta, baja probabilidad de trade, alta de venta
                             tradeProbability = 0.1; 
                             buyProbability = 0.05; 
                         } else {
-                            // --- LÓGICA DE HYPE ---
+                            // --- LÓGICA DE HYPE (MEJORADA) ---
                             const priceHistory = coin.priceHistory || [];
                             let priceChange = 0;
                             if (priceHistory.length > 1) {
@@ -1206,15 +1207,22 @@
                             const volumeRatio = (coin.sSolPool > 0) ? (coin.volume || 0) / coin.sSolPool : 0;
                             const volumeScore = Math.max(0, Math.min(1, volumeRatio / 10));
                             const holderScore = Math.max(0, Math.min(1, (coin.lastHolderCountChange || 0) / 5));
-                            const followersScore = Math.max(0, Math.min(1, (coin.followers || 0) / 100)); // Hype por seguidores
-                            const liveScore = coin.isLive ? 1.0 : 0.0; // Hype por "Live"
                             
-                            const totalHypeScore = (priceChangeScore + volumeScore + holderScore + followersScore + liveScore) / 5;
-                            tradeProbability = totalHypeScore * 0.5; 
+                            // *** NUEVA LÓGICA DE HYPE POR "LIVE" ***
+                            // El Hype por "Live" se basa en los espectadores. 1000 viewers = 1.0 score
+                            const liveScore = coin.isLive ? Math.min(1.0, (coin.liveViewers || 0) / 1000) : 0.0;
+                            const followersScore = Math.max(0, Math.min(1, (coin.followers || 0) / 1000)); // 1000 seguidores = 1.0 score
+
+                            // El Hype por "Live" ahora tiene doble peso
+                            const totalHypeScore = (priceChangeScore + volumeScore + holderScore + followersScore + (liveScore * 2)) / 6;
+                            
+                            tradeProbability = totalHypeScore * 0.5; // La prob. de tradear depende del hype
 
                             if (priceChange > 0) {
+                                // Si el precio sube, el hype aumenta la prob. de compra
                                 buyProbability = 0.5 + (totalHypeScore * 0.4); 
                             } else {
+                                // Si el precio baja, el hype bajo aumenta la prob. de venta
                                 buyProbability = 0.5 - ((1 - totalHypeScore) * 0.4); 
                             }
                         }
@@ -1673,10 +1681,17 @@
                 
                 try {
                     const coinRef = doc(roomRef, coinId);
+                    
+                    // *** NUEVA LÓGICA: AÑADIR VIEWERS Y SEGUIDORES INICIALES ***
+                    const initialViewers = newState ? 50 + Math.floor(Math.random() * 50) : 0;
+                    const initialFollowers = newState ? (coin.followers || 0) + 5 + Math.floor(Math.random() * 10) : coin.followers;
+
                     await updateDoc(coinRef, {
                         isLive: newState,
-                        liveViewers: newState ? 50 + Math.floor(Math.random() * 50) : 0 // Viewers iniciales
+                        liveViewers: initialViewers, 
+                        followers: initialFollowers // Actualizar también los seguidores
                     });
+                    
                     showMessage(newState ? "¡Estás en vivo!" : "Directo finalizado.");
                     btn.textContent = newState ? "EN VIVO" : "Ir en Vivo";
                     btn.classList.toggle('bg-gray-600', newState);
@@ -1779,13 +1794,18 @@
                         const playerData = playerDoc.data();
                         if (playerData.sSOL_balance < boostCost) throw new Error("sSOL insuficiente para el boost.");
                         
+                        // *** NUEVA LÓGICA: AÑADIR VIEWERS Y SEGUIDORES ***
                         const newViewers = (coinDoc.data().liveViewers || 0) + 100 + Math.floor(Math.random() * 200);
+                        const newFollowers = (coinDoc.data().followers || 0) + 10 + Math.floor(Math.random() * 20); // Añadir 10-30 seguidores
                         
                         transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance - boostCost });
-                        transaction.update(coinRef, { liveViewers: newViewers });
+                        transaction.update(coinRef, { 
+                            liveViewers: newViewers,
+                            followers: newFollowers // Actualizar también los seguidores
+                        });
                     });
                     
-                    showMessage("¡Boost aplicado! Más viewers están entrando.");
+                    showMessage("¡Boost aplicado! Más viewers y seguidores están entrando.");
                     
                 } catch (e) {
                     showMessage(e.message);
