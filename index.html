@@ -1713,7 +1713,8 @@
                         
                         const playerTradeHistory = walletDoc.exists() ? walletDoc.data().tradeHistory || [] : [];
                         const updatedTradeHistory = [...playerTradeHistory, { 
-                            type: 'buy', price: newPrice, amountSsol: ssolToSpend, coinId: selectedCoinId, timestamp: serverTimestamp() 
+                            type: 'buy', price: newPrice, amountSsol: ssolToSpend, coinId: selectedCoinId, 
+                            timestamp: new Date() // CORRECCIÓN: serverTimestamp() no es válido en arrays
                         }].slice(-50); 
 
                         transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance - ssolToSpend });
@@ -1812,7 +1813,8 @@
 
                         const playerTradeHistory = walletDoc.exists() ? walletDoc.data().tradeHistory || [] : [];
                         const updatedTradeHistory = [...playerTradeHistory, { 
-                            type: 'sell', price: newPrice, amountSsol: ssolReceived, coinId: selectedCoinId, timestamp: serverTimestamp() 
+                            type: 'sell', price: newPrice, amountSsol: ssolReceived, coinId: selectedCoinId, 
+                            timestamp: new Date() // CORRECCIÓN: serverTimestamp() no es válido en arrays
                         }].slice(-50);
                         
                         transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance + ssolReceived });
@@ -2272,6 +2274,7 @@
     </script>
 </body>
 </html>
+
 
 
 
