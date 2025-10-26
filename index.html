@@ -8,8 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Cargar Chart.js (para las gráficas) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Cargar Chart.js Plugin Annotations (para las líneas de compra/venta) -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <!-- Anotaciones de Chart.js (para líneas de compra/venta) -->
+    <!-- CORRECCIÓN: Movido ANTES del script principal -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
     <!-- Iconos Phosphor (para el icono de X y la UI) -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <!-- Configuración de Tailwind -->
@@ -86,11 +87,21 @@
             background: rgba(31, 41, 55, 0.9); /* item-bg con blur */
             backdrop-filter: blur(10px);
             border-top: 1px solid rgba(55, 65, 81, 0.5);
+            /* Permitir scroll horizontal si hay muchas pestañas */
+            overflow-x: auto;
+            white-space: nowrap;
         }
         .nav-btn {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            flex-grow: 1; padding: 8px 0; color: #9CA3AF; /* gray-400 */
+            display: inline-flex; /* Cambiado de flex a inline-flex */
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            padding: 8px 12px; /* Más padding horizontal */
+            color: #9CA3AF; /* gray-400 */
             transition: color 0.2s ease;
+            flex-shrink: 0; /* Evitar que los botones se encojan */
+            width: auto; /* Ancho automático */
+            min-width: 65px; /* Ancho mínimo por botón */
         }
         .nav-btn.active { color: #14F195; /* solana-green */ }
         .nav-btn i { font-size: 24px; }
@@ -109,10 +120,12 @@
             display: block; /* Visible */
         }
 
-        /* NUEVO: Estilo para la tarjeta de PnL */
-        #pnl-card-content {
-            background: linear-gradient(145deg, #1F2937, #111827);
-            border: 1px solid #374151;
+        /* Estilo para Tarjeta PnL */
+        .pnl-card-gradient-win {
+            background-image: linear-gradient(135deg, #14F195 0%, #10B981 100%);
+        }
+        .pnl-card-gradient-loss {
+            background-image: linear-gradient(135deg, #F87171 0%, #EF4444 100%);
         }
     </style>
 </head>
@@ -159,9 +172,9 @@
                 <p class="text-gray-400">Aún no tienes monedas.</p>
             </div>
             
-            <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Mis Activos de Lujo</h2>
+            <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Mis Activos</h2>
             <div id="my-assets-list" class="flex flex-wrap gap-2">
-                <p class="text-gray-400 text-sm">Aún no tienes activos de lujo.</p>
+                <p class="text-gray-400 text-sm">Aún no tienes activos.</p>
             </div>
         </section>
 
@@ -185,13 +198,16 @@
 
         <!-- PÁGINA 4: TIENDA -->
         <section id="page-tienda" class="page">
-            <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Tienda de Lujo</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Tienda de Activos</h2>
+            
+            <!-- Sección de Lujo -->
+            <h3 class="text-lg font-semibold mb-2 text-solana-purple">Lujo</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div class="glassmorphism rounded-lg shadow-xl p-4 flex flex-col items-center text-center">
                     <span class="text-6xl mb-2">🏎️</span>
                     <h3 class="text-2xl font-bold mb-1">Lambo</h3>
                     <p class="text-lg font-semibold text-solana-green mb-3">5.00 sSOL</p>
-                    <button id="buy-lambo-btn" data-item="lambo" data-cost="5" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
+                    <button data-item="lambo" data-cost="5" data-category="luxury" class="buy-asset-btn w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
                         Comprar
                     </button>
                 </div>
@@ -199,14 +215,82 @@
                     <span class="text-6xl mb-2">🏰</span>
                     <h3 class="text-2xl font-bold mb-1">Mansión</h3>
                     <p class="text-lg font-semibold text-solana-green mb-3">20.00 sSOL</p>
-                    <button id="buy-mansion-btn" data-item="mansion" data-cost="20" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
+                    <button data-item="mansion" data-cost="20" data-category="luxury" class="buy-asset-btn w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
+                        Comprar
+                    </button>
+                </div>
+                <div class="glassmorphism rounded-lg shadow-xl p-4 flex flex-col items-center text-center">
+                    <span class="text-6xl mb-2">🛥️</span>
+                    <h3 class="text-2xl font-bold mb-1">Yate</h3>
+                    <p class="text-lg font-semibold text-solana-green mb-3">50.00 sSOL</p>
+                    <button data-item="yate" data-cost="50" data-category="luxury" class="buy-asset-btn w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
+                        Comprar
+                    </button>
+                </div>
+                <div class="glassmorphism rounded-lg shadow-xl p-4 flex flex-col items-center text-center">
+                    <span class="text-6xl mb-2">🛩️</span>
+                    <h3 class="text-2xl font-bold mb-1">Jet Privado</h3>
+                    <p class="text-lg font-semibold text-solana-green mb-3">100.00 sSOL</p>
+                    <button data-item="jet" data-cost="100" data-category="luxury" class="buy-asset-btn w-full bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
+                        Comprar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sección de Oficina -->
+            <h3 class="text-lg font-semibold mb-2 text-solana-purple">Oficina</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="glassmorphism rounded-lg shadow-xl p-4 flex flex-col items-center text-center">
+                    <span class="text-6xl mb-2">💻</span>
+                    <h3 class="text-2xl font-bold mb-1">PC Gamer</h3>
+                    <p class="text-lg font-semibold text-solana-green mb-3">2.50 sSOL</p>
+                    <button data-item="pc" data-cost="2.5" data-category="office" class="buy-asset-btn w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
+                        Comprar
+                    </button>
+                </div>
+                <div class="glassmorphism rounded-lg shadow-xl p-4 flex flex-col items-center text-center">
+                    <span class="text-6xl mb-2">🖥️</span>
+                    <h3 class="text-2xl font-bold mb-1">Monitor Curvo</h3>
+                    <p class="text-lg font-semibold text-solana-green mb-3">1.00 sSOL</p>
+                    <button data-item="monitor" data-cost="1" data-category="office" class="buy-asset-btn w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
+                        Comprar
+                    </button>
+                </div>
+                 <div class="glassmorphism rounded-lg shadow-xl p-4 flex flex-col items-center text-center">
+                    <span class="text-6xl mb-2">🪑</span>
+                    <h3 class="text-2xl font-bold mb-1">Silla Ergonómica</h3>
+                    <p class="text-lg font-semibold text-solana-green mb-3">0.50 sSOL</Espan>
+                    <button data-item="silla" data-cost="0.5" data-category="office" class="buy-asset-btn w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
                         Comprar
                     </button>
                 </div>
             </div>
         </section>
         
-        <!-- PÁGINA 5: JUGADORES -->
+        <!-- PÁGINA 5: OFICINA -->
+        <section id="page-oficina" class="page">
+            <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Mi Oficina</h2>
+            <div id="my-office-layout" class="bg-item-bg rounded-lg p-6 min-h-[300px] flex flex-wrap gap-4 items-center justify-center">
+                <p id="office-placeholder" class="text-gray-400">Tu oficina está vacía. ¡Compra items en la tienda!</p>
+                <!-- Los items comprados se añadirán aquí -->
+            </div>
+        </section>
+        
+        <!-- PÁGINA 6: CHAT GLOBAL -->
+        <section id="page-chat" class="page">
+            <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Chat Global</h2>
+            <div id="chat-messages-list" class="space-y-3 h-72 overflow-y-auto pr-2 mb-4 bg-item-bg/50 p-3 rounded-lg">
+                <p class="text-gray-400 text-center">Cargando mensajes...</p>
+            </div>
+            <form id="send-chat-message-form" class="flex gap-2">
+                <input type="text" id="chat-message-input" placeholder="Escribe un mensaje..." class="w-full px-3 py-2 bg-item-bg border border-item-hover rounded-md focus:outline-none focus:ring-2 focus:ring-solana-purple" maxlength="200" required>
+                <button type="submit" class="bg-solana-purple hover:bg-opacity-80 text-white font-bold p-3 rounded-md transition duration-200">
+                    <i class="ph ph-paper-plane-tilt text-xl"></i>
+                </button>
+            </form>
+        </section>
+
+        <!-- PÁGINA 7: JUGADORES (Añadida de nuevo) -->
         <section id="page-jugadores" class="page">
             <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Jugadores en la Sala</h2>
             <div id="players-list" class="overflow-y-auto space-y-2 pr-2">
@@ -216,7 +300,7 @@
 
     </main>
 
-    <!-- Barra de Navegación Inferior -->
+    <!-- Barra de Navegación Inferior (7 PESTAÑAS) -->
     <nav class="bottom-nav flex shadow-lg">
         <button class="nav-btn active" data-page="page-mercado">
             <i class="ph ph-chart-line-up"></i>
@@ -233,6 +317,14 @@
         <button class="nav-btn" data-page="page-tienda">
             <i class="ph ph-storefront"></i>
             <span>Tienda</span>
+        </button>
+         <button class="nav-btn" data-page="page-oficina">
+            <i class="ph ph-desktop"></i>
+            <span>Oficina</span>
+        </button>
+         <button class="nav-btn" data-page="page-chat">
+            <i class="ph ph-chats-circle"></i>
+            <span>Chat</span>
         </button>
         <button class="nav-btn" data-page="page-jugadores">
             <i class="ph ph-users"></i>
@@ -284,7 +376,7 @@
                         <input type="number" id="coin-initial-ssol" step="0.01" min="0.01" required placeholder="0.1" class="w-full mt-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-solana-purple">
                     </div>
                      <div>
-                        <label for="coin-initial-tokens" class="block text-sm font-medium text-gray-300">Tokens (Liq.)</label>
+                        <label for="coin-initial-tokens" class="block text-sm font-medium text-gray-300">Tokens (Liq.)</Mlabel>
                         <input type="number" id="coin-initial-tokens" step="1000" min="1000" required placeholder="1000000" class="w-full mt-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-solana-purple">
                     </div>
                 </div>
@@ -298,6 +390,7 @@
     <!-- Modal para Gráfica y Trading -->
     <div id="chart-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden opacity-0 visibility-hidden p-4">
         <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-3xl w-full text-center transform scale-95 overflow-y-auto max-h-full">
+            <!-- ... (contenido del modal de gráfica) ... -->
             <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
                  <div class="flex items-center gap-2">
                      <h2 id="modal-coin-name" class="text-2xl font-bold text-solana-green"></h2>
@@ -313,9 +406,16 @@
                 <canvas id="coin-chart-modal"></canvas>
             </div>
             
-            <button id="view-live-btn" class="hidden w-full mb-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
-                Ver Directo
-            </button>
+            <div class="flex gap-2 mb-4">
+                <button id="view-live-btn" class="hidden w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                    Ver Directo
+                </button>
+                <!-- BOTÓN PNL (NUEVO) -->
+                <button id="show-pnl-card-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                    Ver PnL
+                </button>
+            </div>
+
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <form id="buy-form-modal" class="space-y-2 glassmorphism p-4 rounded-lg">
@@ -328,7 +428,8 @@
                 
                 <form id="sell-form-modal" class="space-y-2 glassmorphism p-4 rounded-lg">
                     <label for="sell-amount-token-modal" class="block text-sm font-medium text-gray-300">Vender (Tokens) - Fee 0.3%</label>
-                    <input type="text" id="sell-amount-token-modal" placeholder="1000" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
+                    <!-- CAMBIO: Añadido 'inputmode="decimal"' para teclados móviles -->
+                    <input type="text" id="sell-amount-token-modal" inputmode="decimal" placeholder="1000" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
                     <div class="grid grid-cols-3 gap-2 text-xs">
                         <button type="button" class="sell-percent-btn bg-gray-700 hover:bg-gray-600 py-1 rounded" data-percent="0.10">10%</button>
                         <button type="button" class="sell-percent-btn bg-gray-700 hover:bg-gray-600 py-1 rounded" data-percent="0.50">50%</button>
@@ -339,36 +440,9 @@
                     </button>
                 </form>
             </div>
-
-            <!-- CAMBIO: Botón de "Ver PnL" -->
-            <button id="show-pnl-btn" class="w-full mt-4 bg-x-blue hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded-md transition duration-200 flex items-center justify-center gap-2">
-                <i class="ph ph-chart-line text-xl"></i>
-                Ver PnL
-            </button>
-            
         </div>
     </div>
     
-    <!-- NUEVO: Modal de PnL -->
-    <div id="pnl-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden opacity-0 visibility-hidden p-4">
-        <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-sm w-full text-center transform scale-95 overflow-y-auto max-h-full">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">Mi PnL</h2>
-                <button id="close-pnl-modal-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
-            </div>
-            
-            <!-- Contenido de la tarjeta PnL -->
-            <div id="pnl-card-content" class="p-4 rounded-lg shadow-xl text-left space-y-3">
-                <!-- El contenido se generará con JavaScript -->
-                <p class="text-gray-400 text-center">Calculando...</p>
-            </div>
-
-            <button id="close-pnl-modal-btn-2" class="w-full mt-4 bg-solana-purple hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded-md transition duration-200">
-                Cerrar
-            </button>
-        </div>
-    </div>
-
     <!-- Modal para Panel de Creador -->
     <div id="creator-dashboard-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden opacity-0 visibility-hidden p-4">
         <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-4xl w-full text-center transform scale-95 overflow-y-auto max-h-full">
@@ -506,6 +580,14 @@
                 Seguir
             </button>
 
+            <!-- Monedas Creadas por el Jugador (NUEVO) -->
+            <div class="text-left border-t border-gray-700 pt-4 mb-4">
+                <h3 class="font-semibold text-md mb-2">Monedas Creadas</h3>
+                <div id="player-profile-created-coins" class="space-y-2 h-32 overflow-y-auto pr-2">
+                    <p class="text-gray-400 text-sm">Este jugador no ha creado monedas.</p>
+                </div>
+            </div>
+
             <div class="text-left border-t border-gray-700 pt-4">
                 <h3 class="font-semibold text-md mb-2">Posts Recientes</h3>
                 <div id="player-profile-posts" class="space-y-3 h-48 overflow-y-auto pr-2">
@@ -514,18 +596,60 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal para Tarjeta PnL (NUEVO) -->
+    <div id="pnl-card-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden opacity-0 visibility-hidden p-4">
+        <div class="modal-content p-0 rounded-lg shadow-2xl max-w-sm w-full text-center transform scale-95 bg-transparent">
+            <!-- Contenido de la tarjeta PnL -->
+            <div id="pnl-card-content" class="rounded-lg text-white p-6 relative overflow-hidden glassmorphism">
+                <div class_id="pnl-card-header" class="flex justify-between items-center mb-4">
+                    <span class="text-2xl font-bold">Mi PnL</span>
+                    <span id="pnl-card-coin-symbol" class="text-2xl font-bold bg-white/20 px-3 py-1 rounded-md">WIF</span>
+                </div>
+                
+                <div id="pnl-card-result-container" class="text-center mb-6">
+                    <div id="pnl-card-percentage" class="text-6xl font-bold text-green-400">+1,200%</div>
+                    <div id="pnl-card-ssol" class="text-2xl font-semibold text-gray-200">+1.50 sSOL</div>
+                </div>
+
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Total Invertido (sSOL)</span>
+                        <span id="pnl-card-invested" class="font-mono">0.00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Valor Actual (sSOL)</span>
+                        <span id="pnl-card-current-value" class="font-mono">0.00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Tokens Actuales</span>
+                        <span id="pnl-card-tokens" class="font-mono">0.00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Precio Promedio Compra</span>
+                        <span id="pnl-card-avg-buy" class="font-mono">$0.00</span>
+                    </div>
+                </div>
+                <div class="absolute -bottom-10 -right-10 w-32 h-32 bg-solana-green/30 rounded-full filter blur-3xl"></div>
+            </div>
+            
+            <button id="close-pnl-card-btn" class="mt-4 bg-solana-purple hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                Cerrar
+            </button>
+        </div>
+    </div>
 
 
     <!-- Scripts de Firebase y Lógica del Juego -->
     <script type="module">
         // Importar funciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
         import { 
             getAuth, 
             signInAnonymously, 
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
         import { 
             getFirestore, 
             doc, 
@@ -542,24 +666,29 @@
             increment,
             writeBatch,
             collectionGroup,
-            getDocs
+            getDocs,
+            addDoc
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- INICIO: ENVOLTORIO MAIN ASYNC ---
         async function main() {
         
             // --- CONFIGURACIÓN DE FIREBASE (TU PROYECTO) ---
-            const appId = 'goshcoin-f8c78'; 
-            const firebaseConfig = {
-              apiKey: "AIzaSyCIv8xGzdkuG0NdFEt6A6D9LAlDet2uz6E",
-              authDomain: "goshcoin-f8c78.firebaseapp.com",
-              projectId: "goshcoin-f8c78",
-              storageBucket: "goshcoin-f8c78.firebasestorage.app",
-              messagingSenderId: "959892823412",
-              appId: "1:959892823412:web:bda85db4e93a056c732021",
-              measurementId: "G-FYMTY4EH6N"
-            };
+            const appId = 'meme-59775'; // <-- ACTUALIZADO
             
+            // Your web app's Firebase configuration
+            // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+            const firebaseConfig = {
+              apiKey: "AIzaSyBT-5vk-IxaOIF_QeIrxnyq4qk9_cwdydU",
+              authDomain: "meme-59775.firebaseapp.com",
+              projectId: "meme-59775",
+              storageBucket: "meme-59775.firebasestorage.app",
+              messagingSenderId: "36406553582",
+              appId: "1:36406553582:web:ad77e2a6672b4a98917cff",
+              measurementId: "G-2PFYP6VCB9"
+            };
+
+            // Initialize Firebase
             const app = initializeApp(firebaseConfig);
             const analytics = getAnalytics(app);
             // --- FIN DE LA CONFIGURACIÓN ---
@@ -567,7 +696,12 @@
             const db = getFirestore(app);
             const auth = getAuth(app);
             
-            // --- REFERENCIAS AL DOM (MODALES) ---
+            // INICIO: Logs de depuración
+            console.log("appId en uso:", appId);
+            console.log("Config de Firebase:", firebaseConfig.projectId);
+            // FIN: Logs de depuración
+            
+            // --- REFERENCIAS AL DOM (MODALES Y OTROS) ---
             const messageModalEl = document.getElementById('message-modal');
             const messageTextEl = document.getElementById('message-text');
             const closeMessageBtn = document.getElementById('close-message-btn');
@@ -583,14 +717,11 @@
             const modalLiveBadgeEl = document.getElementById('modal-live-badge');
             const viewLiveBtnEl = document.getElementById('view-live-btn');
             const modalContractIdEl = document.getElementById('modal-contract-id');
-            const showPnlBtn = document.getElementById('show-pnl-btn'); // CAMBIADO
+            const showPnlCardBtn = document.getElementById('show-pnl-card-btn');
             
-            // NUEVAS REFERENCIAS PNL MODAL
-            const pnlModalEl = document.getElementById('pnl-modal');
-            const pnlCardContentEl = document.getElementById('pnl-card-content');
-            const closePnlModalBtn = document.getElementById('close-pnl-modal-btn');
-            const closePnlModalBtn2 = document.getElementById('close-pnl-modal-btn-2');
-
+            const pnlCardModalEl = document.getElementById('pnl-card-modal');
+            const closePnlCardBtn = document.getElementById('close-pnl-card-btn');
+            
             const creatorDashboardModalEl = document.getElementById('creator-dashboard-modal');
             const closeCreatorDashboardBtn = document.getElementById('close-creator-dashboard-btn');
             const creatorCoinsListEl = document.getElementById('creator-coins-list');
@@ -629,6 +760,7 @@
             const playerProfileAvatarEl = document.getElementById('player-profile-avatar');
             const playerProfileFollowersEl = document.getElementById('player-profile-followers');
             const playerProfilePostsEl = document.getElementById('player-profile-posts');
+            const playerProfileCreatedCoinsEl = document.getElementById('player-profile-created-coins');
             const followPlayerBtn = document.getElementById('follow-player-btn');
             
             
@@ -660,6 +792,10 @@
             closeChartModalBtn.addEventListener('click', () => {
                 hideModal(chartModalEl);
                 selectedCoinId = null; 
+                if (memecoinChart) {
+                    memecoinChart.options.plugins.annotation.annotations = {};
+                    memecoinChart.update('none');
+                }
                 const coinElements = memecoinListEl.querySelectorAll('button');
                 coinElements.forEach(child => {
                     child.classList.remove('bg-solana-purple/50');
@@ -667,9 +803,8 @@
                 });
             });
             
-            // Listeners PnL Modal
-            closePnlModalBtn.addEventListener('click', () => hideModal(pnlModalEl));
-            closePnlModalBtn2.addEventListener('click', () => hideModal(pnlModalEl));
+            showPnlCardBtn.addEventListener('click', () => showPnlModal(selectedCoinId));
+            closePnlCardBtn.addEventListener('click', () => hideModal(pnlCardModalEl));
 
             showCreatorDashboardBtnFromProfile.addEventListener('click', () => {
                 hideModal(myProfileModalEl);
@@ -708,24 +843,25 @@
             let allCoinsCache = new Map(); 
             let myPortfolioCache = new Map(); 
             let myAssetsCache = new Map(); 
+            let myOfficeItemsCache = new Map();
             let allPlayersCache = new Map(); 
             let mySocialPostsCache = new Map(); 
             let globalSocialFeedCache = new Map();
+            let globalChatCache = [];
             let selectedProfilePlayerId = null;
             let myFollowsCache = new Set(); // Cache para saber a quién sigo
             
             // --- COMISIONES ---
-            // AMBAS COMISIONES (LP + CREATOR) VAN AL CREADOR AHORA
             const LP_FEE = 0.0025; // 0.25%
             const CREATOR_FEE = 0.0005; // 0.05%
-            const GLOBAL_FEE_RATE = LP_FEE + CREATOR_FEE; // 0.3% total
+            const TOTAL_FEE = LP_FEE + CREATOR_FEE; // 0.3%
             const PROMO_POST_COST = 0.2; // Costo para promocionar un post
             
             // Referencias de Firestore
             const roomRef = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'data');
             const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'players');
-            // NUEVA COLECCIÓN GLOBAL DE POSTS
             const socialPostsRef = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'social_posts');
+            const chatMessagesRef = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'chat_messages');
             
 
             // --- REFERENCIAS AL DOM (PÁGINAS) ---
@@ -742,6 +878,9 @@
             const myAssetsListEl = document.getElementById('my-assets-list');
             const socialFeedListEl = document.getElementById('social-feed-list');
             const playersListEl = document.getElementById('players-list');
+            const myOfficeLayoutEl = document.getElementById('my-office-layout');
+            const officePlaceholderEl = document.getElementById('office-placeholder');
+            const chatMessagesListEl = document.getElementById('chat-messages-list');
 
             // Formularios (dentro de modales)
             const createCoinFormEl = document.getElementById('create-coin-form');
@@ -756,6 +895,10 @@
             const sellFormEl = document.getElementById('sell-form-modal');
             const buyAmountEl = document.getElementById('buy-amount-ssol-modal');
             const sellAmountEl = document.getElementById('sell-amount-token-modal');
+            
+            const sendChatMessageFormEl = document.getElementById('send-chat-message-form');
+            const chatMessageInputEl = document.getElementById('chat-message-input');
+
 
             // --- LÓGICA DE NAVEGACIÓN (SPA) ---
             function showPage(pageId) {
@@ -791,12 +934,21 @@
                     maximumFractionDigits: 2
                 }).format(value);
             }
-            function formatNumber(value, decimals = 2) {
+            function formatNumber(value) {
                 if (isNaN(value)) value = 0;
-                return new Intl.NumberFormat('en-US', { 
-                    maximumFractionDigits: decimals,
-                    minimumFractionDigits: decimals
-                }).format(value);
+                return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value);
+            }
+            // Función mejorada para aceptar comas y puntos
+            function parseDecimalInput(value) {
+                if (!value) return 0;
+                // Reemplaza la coma por un punto y elimina todo excepto el primer punto
+                let cleanValue = value.replace(/,/g, '.');
+                const parts = cleanValue.split('.');
+                if (parts.length > 2) {
+                    cleanValue = parts[0] + '.' + parts.slice(1).join('');
+                }
+                let parsed = parseFloat(cleanValue);
+                return isNaN(parsed) ? 0 : parsed;
             }
             function timeAgo(date) {
                 if (!date) return 'justo ahora';
@@ -824,10 +976,13 @@
                         await joinGame(user.uid);
                     } else {
                         try {
+                            // CORRECCIÓN: Verificar si la autenticación anónima está habilitada en Firebase
+                            // Si ves el error "auth/configuration-not-found", ve a tu consola Firebase
+                            // -> Authentication -> Sign-in method -> Habilita "Anonymous"
                             await signInAnonymously(auth);
                         } catch (error) {
                             console.error("Error de autenticación:", error);
-                            showMessage("Error al conectar con el servidor. Por favor, recarga.");
+                            showMessage("Error al conectar con el servidor. Verifica que la Autenticación Anónima esté habilitada en Firebase.");
                         }
                     }
                 });
@@ -835,14 +990,26 @@
             
             async function joinGame(userId) {
                 const playerRef = doc(playersRef, userId);
-                const playerDoc = await getDoc(playerRef);
+                
+                // INICIO: Logs de depuración
+                console.log("joinGame: Verificando jugador...");
+                console.log("Ruta de getDoc(playerRef):", playerRef.path); 
+                
+                const playerDoc = await getDoc(playerRef).catch(e => {
+                    console.error("Error en getDoc(playerRef):", e.message);
+                    showMessage("Error al leer tu perfil. Revisa los permisos de Firestore.");
+                });
+                // FIN: Logs de depuración
+                
+                if (!playerDoc) return; // Detener si hubo un error de permisos
 
                 if (!playerDoc.exists()) {
                     await setDoc(playerRef, {
                         userId: userId,
                         sSOL_balance: 2, 
                         joinedAt: serverTimestamp(),
-                        assets: {}, 
+                        assets: {}, // Lujo
+                        officeItems: {}, // Oficina
                         username: `Jugador${userId.slice(-4)}`,
                         avatarUrl: `https://placehold.co/60/374151/FFFFFF?text=${userId.slice(-1)}`,
                         socialFollowers: 0,
@@ -856,8 +1023,9 @@
                 listenForMyPortfolio(userId);
                 listenForMySocialProfile(userId); 
                 listenForMySocialPosts(userId);
-                listenForGlobalSocialFeed(); // ¡NUEVO!
-                listenForMyFollows(userId); // ¡NUEVO!
+                listenForGlobalSocialFeed();
+                listenForMyFollows(userId);
+                listenForChatMessages(); // ¡NUEVO!
             }
             
             // --- LISTENERS DE FIRESTORE (TIEMPO REAL) ---
@@ -869,7 +1037,9 @@
                         const data = doc.data();
                         ssolBalanceEl.textContent = `${formatNumber(data.sSOL_balance)} sSOL`;
                         myAssetsCache = new Map(Object.entries(data.assets || {}));
+                        myOfficeItemsCache = new Map(Object.entries(data.officeItems || {}));
                         updateMyAssetsUI();
+                        updateMyOfficeUI(); // Actualizar oficina
                     }
                 });
             }
@@ -986,8 +1156,6 @@
             }
             
             function listenForGlobalSocialFeed() {
-                // CORRECCIÓN: Se eliminó el orderBy("boosted") para evitar el error de índice.
-                // Se ordena en el cliente. Se aumenta el límite para un mejor orden.
                 const q = query(socialPostsRef, orderBy("createdAt", "desc"), limit(100));
                 onSnapshot(q, (snapshot) => {
                     socialFeedListEl.innerHTML = '';
@@ -997,7 +1165,6 @@
                         return;
                     }
 
-                    // --- INICIO DE LA CORRECCIÓN ---
                     // 1. Convertir snapshot a array
                     const posts = [];
                     snapshot.forEach(doc => {
@@ -1006,15 +1173,12 @@
 
                     // 2. Ordenar en JavaScript: boosted=true primero, luego por fecha
                     posts.sort((a, b) => {
-                        if (a.boosted && !b.boosted) return -1; // a (boostado) va primero
-                        if (!a.boosted && b.boosted) return 1;  // b (boostado) va primero
-                        
-                        // Si ambos son boosted o ambos no lo son, ordenar por fecha (descendente)
+                        if (a.boosted && !b.boosted) return -1;
+                        if (!a.boosted && b.boosted) return 1;
                         const dateA = a.createdAt?.toDate() || new Date(0);
                         const dateB = b.createdAt?.toDate() || new Date(0);
                         return dateB - dateA;
                     });
-                    // --- FIN DE LA CORRECCIÓN ---
 
                     // 3. Iterar sobre el array ordenado (posts) y tomar los primeros 50
                     posts.slice(0, 50).forEach(post => {
@@ -1056,49 +1220,66 @@
                     });
                 });
             }
+            
+            function listenForChatMessages() {
+                const q = query(chatMessagesRef, orderBy("timestamp", "desc"), limit(50));
+                onSnapshot(q, (snapshot) => {
+                    globalChatCache = [];
+                    snapshot.forEach(doc => {
+                        globalChatCache.unshift({ id: doc.id, ...doc.data() }); // unshift para añadir al principio
+                    });
+                    updateChatUI();
+                });
+            }
 
             function listenForMyPortfolio(userId) {
                 const portfolioRef = collection(playersRef, userId, 'wallet');
-                onSnapshot(query(portfolioRef), (snapshot) => {
+                onSnapshot(query(portfolioRef, orderBy('lastAcquired', 'desc')), (snapshot) => { // Ordenar por 'lastAcquired'
                     portfolioListEl.innerHTML = '';
                     myPortfolioCache.clear();
                     
-                    let hasCoins = false;
+                    if (snapshot.empty) {
+                        portfolioListEl.innerHTML = '<p class="text-gray-400">Aún no tienes monedas.</p>';
+                        return;
+                    }
+                    
+                    const portfolioCoins = [];
                     snapshot.forEach(doc => {
                         const coin = doc.data();
-                        // Guardar siempre en caché, incluso si la cantidad es 0, por el historial de PnL
-                        myPortfolioCache.set(doc.id, { ...coin, id: doc.id });
-
-                        if (coin.amount >= 0.00000001) {
-                            hasCoins = true;
-                            const coinData = allCoinsCache.get(doc.id);
-                            const coinName = coinData ? `${coinData.name} (${coinData.symbol})` : 'Moneda Desconocida';
-                            const currentValue = coinData ? coin.amount * coinData.currentPrice : 0;
-                            
-                            const itemEl = document.createElement('div');
-                            itemEl.className = 'flex justify-between items-center bg-item-bg p-3 rounded-lg';
-                            itemEl.innerHTML = `
-                                <div>
-                                    <div class="font-semibold">${coinName}</div>
-                                    <div class="text-sm text-gray-400">${formatNumber(coin.amount, 8)} tokens</div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="font-semibold">${formatCurrency(currentValue)}</div>
-                                    <div class="text-sm text-gray-400">Valor</div>
-                                </div>
-                            `;
-                            portfolioListEl.appendChild(itemEl);
-                        }
+                        if (coin.amount < 0.00000001) return;
+                        portfolioCoins.push({ id: doc.id, ...coin });
                     });
+                    
+                    // Ordenar por 'lastAcquired' descendente (más nuevo primero)
+                    portfolioCoins.sort((a, b) => (b.lastAcquired?.toDate() || 0) - (a.lastAcquired?.toDate() || 0));
 
-                    if (!hasCoins) {
-                        portfolioListEl.innerHTML = '<p class="text-gray-400">Aún no tienes monedas.</p>';
-                    }
+                    portfolioCoins.forEach(coin => {
+                        myPortfolioCache.set(coin.id, coin);
+                        
+                        const coinData = allCoinsCache.get(coin.id);
+                        const coinName = coinData ? `${coinData.name} (${coinData.symbol})` : 'Moneda Desconocida';
+                        const currentValue = coinData ? coin.amount * coinData.currentPrice : 0;
+                        
+                        const itemEl = document.createElement('div');
+                        itemEl.className = 'flex justify-between items-center bg-item-bg p-3 rounded-lg';
+                        itemEl.innerHTML = `
+                            <div>
+                                <div class="font-semibold">${coinName}</div>
+                                <div class="text-sm text-gray-400">${formatNumber(coin.amount)} tokens</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-semibold">${formatCurrency(currentValue)}</div>
+                                <div class="text-sm text-gray-400">Valor</div>
+                            </div>
+                        `;
+                        portfolioListEl.appendChild(itemEl);
+                    });
                 });
             }
 
             function listenForMemecoins() {
-                onSnapshot(query(roomRef), (snapshot) => {
+                // Ordenar por 'createdAt' descendente (más nuevo primero)
+                onSnapshot(query(roomRef, orderBy('createdAt', 'desc')), (snapshot) => {
                     const newCache = new Map();
                     snapshot.forEach(doc => {
                         newCache.set(doc.id, { id: doc.id, ...doc.data() });
@@ -1108,24 +1289,23 @@
                 });
             }
 
+            // --- FUNCIONES DE ACTUALIZACIÓN DE UI ---
+
             function updateMemecoinListUI() {
                 memecoinListEl.innerHTML = '';
-                
-                if (allCoinsCache.size === 0) {
-                    memecoinListEl.innerHTML = '<p class="text-gray-400 text-center mt-10">No hay monedas. ¡Lanza la primera!</p>';
-                    return;
-                }
                 
                 const filterText = coinFilterInputEl.value.toLowerCase();
                 let filteredCoins = Array.from(allCoinsCache.values()).filter(coin => 
                     coin.name.toLowerCase().includes(filterText) || 
                     coin.symbol.toLowerCase().includes(filterText)
                 );
-
-                filteredCoins.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+                
+                // Ya están ordenadas por 'createdAt' por el listener de Firestore
+                // Si se desea otro orden (ej: MarketCap), se re-ordena aquí.
+                // filteredCoins.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
                 
                 if (filteredCoins.length === 0) {
-                    memecoinListEl.innerHTML = '<p class="text-gray-400 text-center mt-10">No se encontraron monedas.</p>';
+                     memecoinListEl.innerHTML = `<p class="text-gray-400 text-center mt-10">${allCoinsCache.size === 0 ? 'No hay monedas. ¡Lanza la primera!' : 'No se encontraron monedas.'}</p>`;
                     return;
                 }
 
@@ -1215,57 +1395,110 @@
             coinFilterInputEl.addEventListener('input', updateMemecoinListUI);
             
             function updatePortfolioValues() {
-                portfolioListEl.innerHTML = '';
+                // El listener de myPortfolioCache ya se encarga de re-renderizar
+                // Esta función solo se llama desde updateMemecoinListUI para forzar
+                // la actualización de valores si los precios cambian.
                 
-                let hasCoins = false;
-                myPortfolioCache.forEach((coin, coinId) => {
-                    if (coin.amount >= 0.00000001) {
-                        hasCoins = true;
-                        const coinData = allCoinsCache.get(coinId);
-                        if (!coinData) return; 
-
-                        const coinName = `${coinData.name} (${coinData.symbol})`;
-                        const currentValue = coin.amount * coinData.currentPrice;
-                        
-                        const itemEl = document.createElement('div');
-                        itemEl.className = 'flex justify-between items-center bg-item-bg p-3 rounded-lg';
-                        itemEl.innerHTML = `
-                            <div>
-                                <div class="font-semibold">${coinName}</div>
-                                <div class="text-sm text-gray-400">${formatNumber(coin.amount, 8)} tokens</div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-semibold">${formatCurrency(currentValue)}</div>
-                                <div class="text-sm text-gray-400">Valor</div>
-                            </div>
-                        `;
-                        portfolioListEl.appendChild(itemEl);
-                    }
+                // Re-iterar sobre el caché existente para actualizar valores
+                portfolioListEl.querySelectorAll('.portfolio-item').forEach(itemEl => {
+                     const coinId = itemEl.dataset.coinId;
+                     const coin = myPortfolioCache.get(coinId);
+                     const coinData = allCoinsCache.get(coinId);
+                     
+                     if (coin && coinData) {
+                         const currentValue = coin.amount * coinData.currentPrice;
+                         itemEl.querySelector('.portfolio-value').textContent = formatCurrency(currentValue);
+                         itemEl.querySelector('.portfolio-amount').textContent = `${formatNumber(coin.amount)} tokens`;
+                     }
                 });
-                
-                if (!hasCoins) {
-                    portfolioListEl.innerHTML = '<p class="text-gray-400">Aún no tienes monedas.</p>';
-                }
             }
             
             function updateMyAssetsUI() {
                 myAssetsListEl.innerHTML = '';
-                if (myAssetsCache.size === 0) {
-                    myAssetsListEl.innerHTML = '<p class="text-gray-400 text-sm">Aún no tienes activos de lujo.</p>';
-                    return;
-                }
+                let hasAssets = false;
                 
+                // Lujo
                 myAssetsCache.forEach((count, item) => {
-                    const emoji = item === 'lambo' ? '🏎️' : '🏰';
-                    const name = item === 'lambo' ? 'Lambo' : 'Mansión';
+                    hasAssets = true;
+                    const itemMap = { lambo: '🏎️', mansion: '🏰', yate: '🛥️', jet: '🛩️' };
+                    const nameMap = { lambo: 'Lambo', mansion: 'Mansión', yate: 'Yate', jet: 'Jet Privado' };
                     const itemEl = document.createElement('div');
                     itemEl.className = 'bg-item-bg p-3 rounded-lg text-center';
                     itemEl.innerHTML = `
-                        <span class="text-2xl">${emoji}</span>
-                        <div class="text-sm font-semibold">${name} (x${count})</div>
+                        <span class="text-2xl">${itemMap[item] || '📦'}</span>
+                        <div class="text-sm font-semibold">${nameMap[item] || item} (x${count})</div>
                     `;
                     myAssetsListEl.appendChild(itemEl);
                 });
+                
+                // Oficina
+                myOfficeItemsCache.forEach((count, item) => {
+                     hasAssets = true;
+                    const itemMap = { pc: '💻', monitor: '🖥️', silla: '🪑' };
+                    const nameMap = { pc: 'PC Gamer', monitor: 'Monitor', silla: 'Silla' };
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'bg-item-bg p-3 rounded-lg text-center';
+                    itemEl.innerHTML = `
+                        <span class="text-2xl">${itemMap[item] || '📦'}</span>
+                        <div class="text-sm font-semibold">${nameMap[item] || item} (x${count})</div>
+                    `;
+                    myAssetsListEl.appendChild(itemEl);
+                });
+                
+                if (!hasAssets) {
+                    myAssetsListEl.innerHTML = '<p class="text-gray-400 text-sm">Aún no tienes activos.</p>';
+                }
+            }
+            
+            function updateMyOfficeUI() {
+                myOfficeLayoutEl.innerHTML = '';
+                let hasItems = false;
+                 myOfficeItemsCache.forEach((count, item) => {
+                    hasItems = true;
+                    const itemMap = { pc: '💻', monitor: '🖥️', silla: '🪑' };
+                    const nameMap = { pc: 'PC Gamer', monitor: 'Monitor', silla: 'Silla' };
+                    for (let i = 0; i < count; i++) {
+                        const itemEl = document.createElement('div');
+                        itemEl.className = 'text-center p-2';
+                        itemEl.innerHTML = `
+                            <span class="text-6xl">${itemMap[item] || '📦'}</span>
+                            <div class="text-xs font-semibold">${nameMap[item] || item}</div>
+                        `;
+                        myOfficeLayoutEl.appendChild(itemEl);
+                    }
+                 });
+                 
+                 officePlaceholderEl.classList.toggle('hidden', hasItems);
+            }
+            
+            function updateChatUI() {
+                chatMessagesListEl.innerHTML = '';
+                if (globalChatCache.length === 0) {
+                     chatMessagesListEl.innerHTML = '<p class="text-gray-400 text-center">No hay mensajes. ¡Sé el primero!</p>';
+                     return;
+                }
+                
+                globalChatCache.forEach(msg => {
+                    const player = allPlayersCache.get(msg.userId) || { username: msg.username, avatarUrl: msg.avatarUrl };
+                    const isMe = msg.userId === currentUserId;
+                    
+                    const msgEl = document.createElement('div');
+                    msgEl.className = `flex gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`;
+                    
+                    msgEl.innerHTML = `
+                        <img src="${player.avatarUrl || 'https://via.placeholder.com/32/374151/FFFFFF?text=P'}" alt="avatar" class="w-8 h-8 rounded-full mt-1 flex-shrink-0">
+                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                            <span class="text-xs text-gray-400 ${isMe ? 'mr-2' : 'ml-2'}">${player.username}</span>
+                            <div class="p-3 rounded-lg ${isMe ? 'bg-solana-purple' : 'bg-item-hover'}">
+                                <p class="text-sm">${msg.text}</p>
+                            </div>
+                        </div>
+                    `;
+                    chatMessagesListEl.appendChild(msgEl);
+                });
+                
+                // Auto-scroll al fondo
+                chatMessagesListEl.scrollTop = chatMessagesListEl.scrollHeight;
             }
             
             // --- LÓGICA DE GRÁFICA (CHART.JS) ---
@@ -1283,10 +1516,11 @@
 
             function initChart() {
                 // Registrar el plugin de anotaciones
-                if (window.ChartAnnotation) {
-                    Chart.register(window.ChartAnnotation);
+                // CORRECCIÓN: Usar ChartAnnotation si está disponible globalmente
+                if (typeof ChartAnnotation !== 'undefined') {
+                    Chart.register(ChartAnnotation);
                 } else {
-                    console.error("Chart.js Annotation plugin not loaded!");
+                    console.warn("ChartAnnotation plugin no encontrado. Las líneas de compra/venta no funcionarán.");
                 }
                 
                 const ctx = document.getElementById('coin-chart-modal').getContext('2d');
@@ -1351,6 +1585,7 @@
                                     }
                                 }
                             },
+                            // Plugin de anotaciones (inicialmente vacío)
                             annotation: {
                                 annotations: {}
                             }
@@ -1380,60 +1615,74 @@
                 memecoinChart.data.datasets[0].data = history; 
                 memecoinChart.data.datasets[1].data = volumeHistory; 
                 
-                // --- Añadir líneas de Compra/Venta ---
-                const myTrades = myPortfolioCache.get(coinData.id)?.tradeHistory || [];
-                
-                const buyLines = myTrades
-                    .filter(t => t.type === 'buy')
-                    .reduce((acc, trade, i) => {
-                        acc[`buyLine${i}`] = {
-                            type: 'line',
-                            yMin: trade.price,
-                            yMax: trade.price,
-                            borderColor: 'rgba(20, 241, 149, 0.7)', // solana-green
-                            borderWidth: 2,
-                            borderDash: [6, 6],
-                            label: {
-                                content: `Compra @ ${formatPrice(trade.price)}`,
-                                enabled: true,
-                                position: 'start',
-                                backgroundColor: 'rgba(20, 241, 149, 0.7)',
-                                font: { size: 10 },
-                                padding: 2,
-                                color: '#000'
-                            }
-                        };
-                        return acc;
-                    }, {});
-
-                const sellLines = myTrades
-                    .filter(t => t.type === 'sell')
-                    .reduce((acc, trade, i) => {
-                        acc[`sellLine${i}`] = {
-                            type: 'line',
-                            yMin: trade.price,
-                            yMax: trade.price,
-                            borderColor: 'rgba(239, 68, 68, 0.7)', // red-500
-                            borderWidth: 2,
-                            borderDash: [6, 6],
-                            label: {
-                                content: `Venta @ ${formatPrice(trade.price)}`,
-                                enabled: true,
-                                position: 'end',
-                                backgroundColor: 'rgba(239, 68, 68, 0.7)',
-                                font: { size: 10 },
-                                padding: 2,
-                                color: '#FFF'
-                            }
-                        };
-                        return acc;
-                    }, {});
-
-                // Actualizar las anotaciones del gráfico
-                memecoinChart.options.plugins.annotation.annotations = { ...buyLines, ...sellLines };
+                // Actualizar anotaciones de compra/venta
+                updateChartAnnotations(coinData.id);
                 
                 memecoinChart.update('none'); 
             }
+            
+            function updateChartAnnotations(coinId) {
+                if (!memecoinChart || !coinId || typeof ChartAnnotation === 'undefined') return; // Verificar si el plugin está cargado
+                
+                const portfolioItem = myPortfolioCache.get(coinId);
+                const tradeHistory = portfolioItem?.tradeHistory || [];
+                const annotations = {};
+                
+                // Promedio de Compra
+                const buyTrades = tradeHistory.filter(t => t.type === 'buy' && t.price);
+                if (buyTrades.length > 0) {
+                    const totalCost = buyTrades.reduce((sum, t) => sum + (t.amountSsol || 0), 0);
+                    const totalTokens = buyTrades.reduce((sum, t) => sum + (t.amountToken || 0), 0);
+                    const avgBuyPrice = totalCost / totalTokens;
+                    
+                    if (isFinite(avgBuyPrice) && avgBuyPrice > 0) {
+                        annotations['avgBuyLine'] = {
+                            type: 'line',
+                            yMin: avgBuyPrice,
+                            yMax: avgBuyPrice,
+                            borderColor: 'rgb(34, 197, 94)', // green-500
+                            borderWidth: 2,
+                            borderDash: [6, 6],
+                            label: {
+                                content: `Compra Prom: ${formatPrice(avgBuyPrice)}`,
+                                enabled: true,
+                                position: 'start',
+                                backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                                font: { size: 10 },
+                                xPadding: 4,
+                                yPadding: 4,
+                                borderRadius: 4,
+                            }
+                        };
+                    }
+                }
+
+                // Última Venta
+                const lastSellTrade = tradeHistory.filter(t => t.type === 'sell' && t.price).pop();
+                if (lastSellTrade) {
+                     annotations['lastSellLine'] = {
+                        type: 'line',
+                        yMin: lastSellTrade.price,
+                        yMax: lastSellTrade.price,
+                        borderColor: 'rgb(239, 68, 68)', // red-500
+                        borderWidth: 2,
+                        borderDash: [6, 6],
+                        label: {
+                            content: `Últ Venta: ${formatPrice(lastSellTrade.price)}`,
+                            enabled: true,
+                            position: 'end',
+                            backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                            font: { size: 10 },
+                            xPadding: 4,
+                            yPadding: 4,
+                            borderRadius: 4,
+                        }
+                    };
+                }
+
+                memecoinChart.options.plugins.annotation.annotations = annotations;
+            }
+
 
             function updateSelectedCoinPrice(price) {
                 modalCoinPriceEl.textContent = `${formatPrice(price)}`;
@@ -1450,7 +1699,7 @@
                 modalCoinNameEl.textContent = `${coinData.name} (${coinData.symbol})`;
                 modalContractIdEl.textContent = `ID de Contrato: ...${coinData.contractId.slice(-6)}`;
                 updateSelectedCoinPrice(coinData.currentPrice);
-                updateChart(coinData); // Esta función ahora también dibujará las líneas
+                updateChart(coinData);
                 showModal(chartModalEl);
                 
                 modalLiveBadgeEl.classList.toggle('hidden', !coinData.isLive);
@@ -1496,6 +1745,7 @@
                         
                         const newCoinRef = doc(roomRef); 
                         const price = initialSsol / initialTokens;
+                        const creationTime = serverTimestamp(); // Usar para 'createdAt' y 'lastAcquired'
                         
                         transaction.set(newCoinRef, {
                             name: name,
@@ -1511,26 +1761,26 @@
                             volumeHistory: [0], 
                             allTimeHigh: price, 
                             allTimeLow: price, 
-                            createdAt: serverTimestamp(),
+                            createdAt: creationTime, // <-- Ordenar por esto
                             marketCap: initialSsol * 2, // Estimación inicial
                             volume: 0,
                             holderCount: 1,
                             lastHolderCountChange: 1, 
                             creatorFeesSsol: 0, 
                             creatorFeesToken: 0, 
-                            botSsolPool: 400, 
-                            botTokenPool: 0,
+                            botSsolPool: 400, // Pool de sSOL del bot
+                            botTokenPool: 0, // Pool de Tokens del bot
                             isLive: false,
                             liveViewers: 0,
-                            followers: (playerDoc.data().socialFollowers || 0) + 1, 
-                            washTradeBudget: 0,
-                            isWashBotActive: false // NUEVO: Bot desactivado por defecto
+                            followers: (playerDoc.data().socialFollowers || 0) + 1, // El creador se auto-sigue
                         });
 
+                        // El creador recibe los tokens de liquidez iniciales
                         const walletRef = doc(playersRef, currentUserId, 'wallet', newCoinRef.id);
                         transaction.set(walletRef, {
                             amount: initialTokens,
-                            tradeHistory: [] 
+                            tradeHistory: [],
+                            lastAcquired: creationTime // <-- Ordenar por esto
                         });
                     });
                     
@@ -1547,27 +1797,28 @@
 
             // --- LÓGICA DE BOTS (REACTIVA Y PROACTIVA) ---
             
-            function simulateBotTrade(coinData, playerAction, forceBuyProbability = null, isWash = false) {
+            // Simula un trade de bot (compra o venta)
+            function simulateBotTrade(coinData, playerAction, forceBuyProbability = null) {
                 
                 let { 
                     botSsolPool, botTokenPool, sSolPool, tokenPool, 
                     volume, priceHistory, volumeHistory, creatorId,
                     creatorFeesSsol, creatorFeesToken, marketCap, allTimeHigh, allTimeLow,
-                    followers, washTradeBudget 
+                    followers
                 } = coinData;
 
+                // El bot no tradea contra sí mismo
                 if (creatorId === 'bot') return {};
                 
-                let buyProbability = 0.6; 
+                // Determinar probabilidad de compra
+                let buyProbability = 0.6; // Base
                 if (playerAction === 'proactive' && forceBuyProbability !== null) {
                     buyProbability = forceBuyProbability;
                 }
                 
-                const isBuy = isWash ? (sSolPool < tokenPool) : (Math.random() < buyProbability);
+                const isBuy = (Math.random() < buyProbability);
 
                 let ssolTraded = 0;
-                let ssolForTrade = 0;
-                let tokensForTrade = 0;
                 let tokensReceived = 0;
                 let ssolReceived = 0;
                 let finalSsolPool = sSolPool;
@@ -1576,66 +1827,69 @@
                 let newCreatorFeesToken = creatorFeesToken || 0;
                 let newFollowers = followers || 0;
                 let creatorFollowsIncrement = 0; // Para seguir al creador
+                
+                // Calcular pools y fees (Lógica K constante)
+                // (x * y = k)
+                const k = sSolPool * tokenPool;
 
                 if (isBuy) {
-                    const ssolToSpend = isWash ? (washTradeBudget * 0.1) : (Math.pow(Math.random(), 2) * (botSsolPool * 0.1));
+                    // Bot COMPRA tokens (gasta sSOL)
+                    const ssolToSpend = (Math.pow(Math.random(), 2) * (botSsolPool * 0.1)); // Gasta hasta 10% de su pool
                     if (ssolToSpend < 0.00000001 || botSsolPool < ssolToSpend) return {};
                     
                     botSsolPool -= ssolToSpend;
                     ssolTraded = ssolToSpend; 
                     
-                    // CAMBIO: Ambas fees van al creador
-                    const globalFee = ssolToSpend * GLOBAL_FEE_RATE;
-                    ssolForTrade = ssolToSpend - globalFee;
+                    // Calcular fees (0.3% total)
+                    const totalFeeInSsol = ssolToSpend * TOTAL_FEE;
+                    const ssolForTrade = ssolToSpend - totalFeeInSsol;
                     
-                    const k = sSolPool * tokenPool;
-                    // CAMBIO: LP Fee ya no se añade a la pool
-                    const newSsolPool_k = sSolPool + ssolForTrade;
-                    finalTokenPool = k / newSsolPool_k;
+                    // Calcular tokens recibidos
+                    const newSsolPool = sSolPool + ssolForTrade;
+                    finalTokenPool = k / newSsolPool;
                     tokensReceived = tokenPool - finalTokenPool;
                     
-                    finalSsolPool = newSsolPool_k;
-                    newCreatorFeesSsol += globalFee;
+                    finalSsolPool = newSsolPool;
+                    newCreatorFeesSsol += totalFeeInSsol; // Todas las fees (LP+Creator) van al creador
                     
                     botTokenPool += tokensReceived;
-                    if (isWash) washTradeBudget -= ssolToSpend; 
                     
-                    newFollowers++; 
+                    newFollowers++; // Cada compra de bot añade un seguidor
                     if (Math.random() < 0.3) { // 30% de probabilidad de seguir al creador
                         creatorFollowsIncrement = 1;
                     }
                     
                 } else {
-                    const isRugpull = ((playerAction === 'sell' || playerAction === 'proactive') && Math.random() < 0.1);
-                    const sellPercentage = isWash ? 0.1 : (isRugpull ? 0.5 : (Math.pow(Math.random(), 2) * 0.1));
+                    // Bot VENDE tokens (recibe sSOL)
+                    // Vende en parciales pequeños (max 10%)
+                    const sellPercentage = (Math.pow(Math.random(), 2) * 0.1);
                     
                     const tokensToSell = botTokenPool * sellPercentage;
                     if (tokensToSell < 0.00000001) return {};
 
                     botTokenPool -= tokensToSell;
                     
-                    // CAMBIO: Ambas fees van al creador
-                    const globalFee = tokensToSell * GLOBAL_FEE_RATE;
-                    tokensForTrade = tokensToSell - globalFee;
+                    // Calcular fees (0.3% total)
+                    const totalFeeInTokens = tokensToSell * TOTAL_FEE;
+                    const tokensForTrade = tokensToSell - totalFeeInTokens;
 
-                    const k = sSolPool * tokenPool;
-                    // CAMBIO: LP Fee ya no se añade a la pool
-                    const newTokenPool_k = tokenPool + tokensForTrade;
-                    finalSsolPool = k / newTokenPool_k;
+                    // Calcular sSOL recibido
+                    const newTokenPool = tokenPool + tokensForTrade;
+                    finalSsolPool = k / newTokenPool;
                     ssolReceived = sSolPool - finalSsolPool;
                     ssolTraded = ssolReceived; 
 
-                    finalTokenPool = newTokenPool_k;
-                    newCreatorFeesToken += globalFee;
+                    finalTokenPool = newTokenPool;
+                    newCreatorFeesToken += totalFeeInTokens; // Todas las fees (LP+Creator) van al creador
                     
                     botSsolPool += ssolReceived;
-                    if (isWash) washTradeBudget += ssolReceived;
                 }
 
+                // Recalcular estado de la moneda
                 const newPrice = finalSsolPool / finalTokenPool;
                 const newAllTimeHigh = Math.max(allTimeHigh || 0, newPrice);
                 const newAllTimeLow = Math.min(allTimeLow || 999999, newPrice); 
-                const newMarketCap = newPrice * (finalTokenPool + botTokenPool);
+                const newMarketCap = newPrice * (finalTokenPool + botTokenPool); // MC = Precio * (Tokens en LP + Tokens de Bot)
                 const newHistory = [...priceHistory, newPrice].slice(-50);
                 const newVolumeHistory = [...(volumeHistory || []), ssolTraded].slice(-50);
                 const newVolume = volume + ssolTraded;
@@ -1658,81 +1912,51 @@
                 };
                 
                 if (isBuy) updates.followers = newFollowers;
-                updates.washTradeBudget = washTradeBudget;
                 
                 return updates;
             }
             
-            async function washTradeBotLoop() {
-                if (allCoinsCache.size === 0) {
-                    setTimeout(washTradeBotLoop, 3000); 
-                    return;
-                }
-
-                const batch = writeBatch(db);
-                let batchHasWrites = false;
-
-                for (const [coinId, coin] of allCoinsCache.entries()) {
-                    // CAMBIO: Añadido check de isWashBotActive
-                    if (coin.washTradeBudget && coin.washTradeBudget > 0.0001 && coin.isWashBotActive) {
-                        const coinRef = doc(roomRef, coinId);
-                        const botUpdates = simulateBotTrade(coin, 'proactive', null, true); 
-                        
-                        if (Object.keys(botUpdates).length > 0) {
-                            delete botUpdates.creatorFollowsIncrement; // Los bots de wash no siguen
-                            batch.update(coinRef, botUpdates);
-                            batchHasWrites = true;
-                        }
-                    }
-                }
-                
-                if (batchHasWrites) {
-                    try { await batch.commit(); } catch (e) { console.warn("Fallo el batch de Wash Trade:", e.message); }
-                }
-                setTimeout(washTradeBotLoop, 3000); 
-            }
-
+            // Loop de Bots Proactivos (simula el mercado)
             async function proactiveBotLoop() {
                 if (allCoinsCache.size > 0 && allPlayersCache.size > 0) {
                     
                     for (const [coinId, coin] of allCoinsCache.entries()) {
                         
+                        // Probabilidad de que el bot haga un trade en esta moneda
+                        let tradeProbability = 0.1; // Base
+                        
+                        // Probabilidad de que el trade sea una COMPRA
+                        let buyProbability = 0.5; // Base
+                        
                         const allTimeHigh = coin.allTimeHigh || coin.priceHistory[0] || 0;
                         const currentPrice = coin.currentPrice;
-                        let buyProbability = 0.5; 
-                        let tradeProbability = 0.0; 
 
-                        if (allTimeHigh > 0 && (currentPrice / allTimeHigh) < 0.2) {
-                            tradeProbability = 0.1; 
-                            buyProbability = 0.05; 
-                        } else {
-                            const priceHistory = coin.priceHistory || [];
-                            let priceChange = 0;
-                            if (priceHistory.length > 1) {
-                                const prevPrice = priceHistory[priceHistory.length - 2];
-                                if (prevPrice > 0) priceChange = (coin.currentPrice - prevPrice) / prevPrice;
-                            }
-                            
-                            // *** NUEVA LÓGICA DE HYPE CON SEGUIDORES DEL CREADOR ***
-                            const creator = allPlayersCache.get(coin.creatorId);
-                            const creatorFollowers = creator ? (creator.socialFollowers || 0) : 0;
-                            const creatorFollowerScore = Math.min(1.0, creatorFollowers / 1000); // 1000 seguidores = 1.0 score
-                            
-                            const priceChangeScore = Math.min(1, priceChange / 0.1); 
-                            const volumeRatio = (coin.sSolPool > 0) ? (coin.volume || 0) / coin.sSolPool : 0;
-                            const volumeScore = Math.min(1, volumeRatio / 10);
-                            const holderScore = Math.min(1, (coin.lastHolderCountChange || 0) / 5);
-                            const liveScore = coin.isLive ? Math.min(1.0, (coin.liveViewers || 0) / 1000) : 0.0;
-                            const followersScore = Math.min(1, (coin.followers || 0) / 1000); 
-
-                            // El hype social (creador + live + seguidores de moneda) es ahora muy importante
-                            const totalHypeScore = (priceChangeScore + volumeScore + holderScore + (followersScore*1.5) + (liveScore * 2) + (creatorFollowerScore * 2)) / 7.5;
-                            
-                            tradeProbability = totalHypeScore * 0.5; 
-
-                            if (priceChange > 0) buyProbability = 0.5 + (totalHypeScore * 0.4); 
-                            else buyProbability = 0.5 - ((1 - totalHypeScore) * 0.4); 
+                        // Lógica de Hype
+                        const priceHistory = coin.priceHistory || [];
+                        let priceChange = 0;
+                        if (priceHistory.length > 1) {
+                            const prevPrice = priceHistory[priceHistory.length - 2];
+                            if (prevPrice > 0) priceChange = (coin.currentPrice - prevPrice) / prevPrice;
                         }
+                        
+                        const creator = allPlayersCache.get(coin.creatorId);
+                        const creatorFollowers = creator ? (creator.socialFollowers || 0) : 0;
+                        const creatorFollowerScore = Math.min(1.0, creatorFollowers / 1000); // 1000 seguidores = 1.0 score
+                        
+                        const priceChangeScore = Math.min(1, priceChange / 0.1); 
+                        const volumeRatio = (coin.sSolPool > 0) ? (coin.volume || 0) / coin.sSolPool : 0;
+                        const volumeScore = Math.min(1, volumeRatio / 10);
+                        const holderScore = Math.min(1, (coin.lastHolderCountChange || 0) / 5);
+                        const liveScore = coin.isLive ? Math.min(1.0, (coin.liveViewers || 0) / 1000) : 0.0;
+                        const followersScore = Math.min(1, (coin.followers || 0) / 1000); 
+
+                        const totalHypeScore = (priceChangeScore + volumeScore + holderScore + (followersScore*1.5) + (liveScore * 2) + (creatorFollowerScore * 2)) / 7.5;
+                        
+                        tradeProbability = totalHypeScore * 0.5; // Hype alto = más trades
+
+                        if (priceChange > 0) buyProbability = 0.5 + (totalHypeScore * 0.4); // Si sube, más compras
+                        else buyProbability = 0.5 - ((1 - totalHypeScore) * 0.4); // Si baja, más ventas
+                        
                         
                         if (Math.random() < tradeProbability) {
                             const coinRef = doc(roomRef, coinId);
@@ -1749,13 +1973,29 @@
                                         // Incrementar seguidores del creador si el bot decide seguir
                                         if (botUpdates.creatorFollowsIncrement > 0) {
                                             const creatorRef = doc(playersRef, coinData.creatorId);
-                                            transaction.update(creatorRef, {
-                                                socialFollowers: increment(botUpdates.creatorFollowsIncrement)
-                                            });
+                                            // Solo actualizar si el creador existe
+                                            const creatorDoc = await transaction.get(creatorRef);
+                                            if (creatorDoc.exists()) {
+                                                transaction.update(creatorRef, {
+                                                    socialFollowers: increment(botUpdates.creatorFollowsIncrement)
+                                                });
+                                            }
                                         }
                                         delete botUpdates.creatorFollowsIncrement;
+                                        
+                                        // Incrementar seguidores de un jugador aleatorio (simulando que ven el feed)
+                                        if (Math.random() < 0.1) { // 10% de probabilidad
+                                            const randomPlayerId = Array.from(allPlayersCache.keys())[Math.floor(Math.random() * allPlayersCache.size)];
+                                            if (randomPlayerId && randomPlayerId !== coinData.creatorId) {
+                                                 const randomPlayerRef = doc(playersRef, randomPlayerId);
+                                                 const randomPlayerDoc = await transaction.get(randomPlayerRef);
+                                                 if (randomPlayerDoc.exists()) {
+                                                    transaction.update(randomPlayerRef, { socialFollowers: increment(1) });
+                                                 }
+                                            }
+                                        }
 
-                                        botUpdates.lastHolderCountChange = 0; 
+                                        botUpdates.lastHolderCountChange = 0; // Resetear el contador de holders
                                         transaction.update(coinRef, botUpdates);
                                     }
                                 });
@@ -1765,8 +2005,67 @@
                         }
                     }
                 }
-                setTimeout(proactiveBotLoop, 5000);
+                setTimeout(proactiveBotLoop, 5000); // Ejecutar cada 5 segundos
             }
+
+            // --- LÓGICA DE COMPRA/VENTA (CON IMPACTO DE PRECIO) ---
+
+            // Calcula el impacto de una COMPRA (ssolIn)
+            function calculateBuyImpact(ssolIn, sSolPool, tokenPool) {
+                const k = sSolPool * tokenPool;
+                
+                // ssolIn se divide en fee y trade
+                const totalFeeInSsol = ssolIn * TOTAL_FEE;
+                const ssolForTrade = ssolIn - totalFeeInSsol;
+                
+                // El pool de sSOL aumenta
+                const newSsolPool = sSolPool + ssolForTrade;
+                // El pool de tokens disminuye para mantener K
+                const newTokenPool = k / newSsolPool;
+                
+                const tokensOut = tokenPool - newTokenPool;
+                
+                // El precio después de tu compra
+                const newPrice = newSsolPool / newTokenPool;
+                
+                return {
+                    tokensOut: tokensOut, // Tokens que recibe el jugador
+                    newSsolPool: newSsolPool,
+                    newTokenPool: newTokenPool,
+                    newPrice: newPrice,
+                    feesCollectedSsol: totalFeeInSsol, // Fees para el creador
+                    ssolTraded: ssolIn // Volumen
+                };
+            }
+
+            // Calcula el impacto de una VENTA (tokensIn)
+            function calculateSellImpact(tokensIn, sSolPool, tokenPool) {
+                const k = sSolPool * tokenPool;
+                
+                // tokensIn se divide en fee y trade
+                const totalFeeInTokens = tokensIn * TOTAL_FEE;
+                const tokensForTrade = tokensIn - totalFeeInTokens;
+                
+                // El pool de tokens aumenta
+                const newTokenPool = tokenPool + tokensForTrade;
+                // El pool de sSOL disminuye para mantener K
+                const newSsolPool = k / newTokenPool;
+                
+                const ssolOut = sSolPool - newSsolPool;
+                
+                // El precio después de tu venta
+                const newPrice = newSsolPool / newTokenPool;
+                
+                return {
+                    ssolOut: ssolOut, // sSOL que recibe el jugador
+                    newSsolPool: newSsolPool,
+                    newTokenPool: newTokenPool,
+                    newPrice: newPrice,
+                    feesCollectedToken: totalFeeInTokens, // Fees para el creador
+                    ssolTraded: ssolOut // Volumen (en sSOL)
+                };
+            }
+
 
             // Formulario de Compra
             buyFormEl.addEventListener('submit', async (e) => {
@@ -1774,16 +2073,17 @@
                 const ssolToSpend = parseFloat(buyAmountEl.value);
                 if (!selectedCoinId || isNaN(ssolToSpend) || ssolToSpend <= 0) return showMessage("Ingresa un monto válido.");
                 
-                let tokensReceived = 0; 
                 try {
+                    let tradeResult; // Declara fuera para el mensaje
                     await runTransaction(db, async (transaction) => {
                         const playerRef = doc(playersRef, currentUserId);
                         const coinRef = doc(roomRef, selectedCoinId);
                         const walletRef = doc(playersRef, currentUserId, 'wallet', selectedCoinId);
                         
-                        const [playerDoc, coinDoc, walletDoc] = await Promise.all([
-                            transaction.get(playerRef), transaction.get(coinRef), transaction.get(walletRef)
+                        const [playerDoc, coinDoc] = await Promise.all([
+                            transaction.get(playerRef), transaction.get(coinRef)
                         ]);
+                        const walletDoc = await transaction.get(walletRef); // Cargar Billetera
                         
                         if (!playerDoc.exists() || !coinDoc.exists()) throw new Error("Datos no encontrados.");
                         
@@ -1792,38 +2092,28 @@
                         
                         if (playerData.sSOL_balance < ssolToSpend) throw new Error("sSOL insuficiente.");
                         
-                        // 1. Simular bot reactivo (opcional, pero mantenido)
+                        // 1. Simular trade de bot (reactivo)
                         const botUpdates = simulateBotTrade(coinData, 'reactive_buy');
                         coinData = { ...coinData, ...botUpdates };
                         
-                        // 2. Calcular trade del jugador (NUEVA LÓGICA DE PRECIO)
-                        const ssolTraded = ssolToSpend; 
+                        // 2. Calcular el impacto de PRECIO del JUGADOR
+                        tradeResult = calculateBuyImpact(ssolToSpend, coinData.sSolPool, coinData.tokenPool);
                         
-                        // CAMBIO: Ambas fees van al creador
-                        const globalFee = ssolToSpend * GLOBAL_FEE_RATE;
-                        const ssolForTrade = ssolToSpend - globalFee;
+                        if (tradeResult.tokensOut <= 0) throw new Error("Error en el cálculo del trade.");
 
-                        // CALCULAR IMPACTO EN PRECIO
-                        const k = coinData.sSolPool * coinData.tokenPool;
-                        // CAMBIO: LP Fee ya no se añade a la pool
-                        const newSsolPool_k = coinData.sSolPool + ssolForTrade;
-                        const newTokenPool = k / newSsolPool_k;
+                        // 3. Preparar actualizaciones
                         
-                        tokensReceived = coinData.tokenPool - newTokenPool; 
-                        const finalSsolPool = newSsolPool_k;
-                        
-                        // ESTE ES EL NUEVO PRECIO *DESPUÉS* DE LA COMPRA
-                        const newPrice = finalSsolPool / newTokenPool; 
-                        
-                        // 3. Actualizar historial y contadores
+                        // Historiales
+                        const newPrice = tradeResult.newPrice;
                         const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice); 
                         const newAllTimeLow = Math.min(coinData.allTimeLow || 999999, newPrice);
-                        const newMarketCap = newPrice * (newTokenPool + coinData.botTokenPool);
+                        const newMarketCap = newPrice * (tradeResult.newTokenPool + coinData.botTokenPool);
                         const newHistory = [...coinData.priceHistory, newPrice].slice(-50);
-                        const newVolumeHistory = [...(coinData.volumeHistory || []), ssolTraded].slice(-50);
-                        const newVolume = coinData.volume + ssolTraded;
-                        const newCreatorFeesSsol = (coinData.creatorFeesSsol || 0) + globalFee; // CAMBIO
+                        const newVolumeHistory = [...(coinData.volumeHistory || []), tradeResult.ssolTraded].slice(-50);
+                        const newVolume = coinData.volume + tradeResult.ssolTraded;
+                        const newCreatorFeesSsol = (coinData.creatorFeesSsol || 0) + tradeResult.feesCollectedSsol;
 
+                        // Holders
                         let newHolderCount = coinData.holderCount;
                         let holderChange = 0;
                         let newFollowers = coinData.followers || 0;
@@ -1838,44 +2128,66 @@
                         }
                         const newLastHolderCountChange = (coinData.lastHolderCountChange || 0) + holderChange;
                         
+                        // Billetera del Jugador
                         const playerTradeHistory = walletDoc.exists() ? walletDoc.data().tradeHistory || [] : [];
                         const updatedTradeHistory = [...playerTradeHistory, { 
                             type: 'buy', 
-                            price: newPrice, // Loggear el precio pagado
+                            price: newPrice, // Precio de impacto
                             amountSsol: ssolToSpend, 
-                            coinId: selectedCoinId, 
+                            amountToken: tradeResult.tokensOut, // Tokens recibidos
                             timestamp: new Date()
                         }].slice(-50); 
 
-                        // 4. Aplicar transacciones
-                        transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance - ssolToSpend });
-                        transaction.set(walletRef, { amount: currentTokens + tokensReceived, tradeHistory: updatedTradeHistory }, { merge: true });
+                        // 4. Ejecutar Transacción
                         
-                        // Incrementar seguidores del creador
+                        // Actualizar Jugador
+                        transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance - ssolToSpend });
+                        
+                        // Actualizar Billetera
+                        transaction.set(walletRef, { 
+                            amount: currentTokens + tradeResult.tokensOut, 
+                            tradeHistory: updatedTradeHistory,
+                            lastAcquired: serverTimestamp() // Actualizar para ordenar portafolio
+                        }, { merge: true });
+                        
+                        // Incrementar seguidores del creador (si es primera compra)
                         if (creatorFollowsIncrement > 0) {
                             const creatorRef = doc(playersRef, coinData.creatorId);
-                            transaction.update(creatorRef, { socialFollowers: increment(creatorFollowsIncrement) });
+                            const creatorDoc = await transaction.get(creatorRef);
+                            if (creatorDoc.exists()) {
+                                transaction.update(creatorRef, { socialFollowers: increment(creatorFollowsIncrement) });
+                            }
                         }
+                        // Incrementar seguidores del creador (si el bot siguió)
                         if (botUpdates.creatorFollowsIncrement > 0) {
                             const creatorRef = doc(playersRef, coinData.creatorId);
-                            transaction.update(creatorRef, { socialFollowers: increment(botUpdates.creatorFollowsIncrement) });
+                            const creatorDoc = await transaction.get(creatorRef);
+                            if (creatorDoc.exists()) {
+                                transaction.update(creatorRef, { socialFollowers: increment(botUpdates.creatorFollowsIncrement) });
+                            }
                         }
                         delete botUpdates.creatorFollowsIncrement;
                         
+                        // Actualizar Moneda
                         transaction.update(coinRef, {
                              ...botUpdates, 
-                            sSolPool: finalSsolPool, tokenPool: newTokenPool,
-                            currentPrice: newPrice, priceHistory: newHistory,
-                            volume: newVolume, volumeHistory: newVolumeHistory,
-                            marketCap: newMarketCap, holderCount: newHolderCount,
+                            sSolPool: tradeResult.newSsolPool, 
+                            tokenPool: tradeResult.newTokenPool,
+                            currentPrice: newPrice, 
+                            priceHistory: newHistory,
+                            volume: newVolume, 
+                            volumeHistory: newVolumeHistory,
+                            marketCap: newMarketCap, 
+                            holderCount: newHolderCount,
                             lastHolderCountChange: newLastHolderCountChange,
                             creatorFeesSsol: newCreatorFeesSsol,
-                            allTimeHigh: newAllTimeHigh, allTimeLow: newAllTimeLow,
+                            allTimeHigh: newAllTimeHigh, 
+                            allTimeLow: newAllTimeLow,
                             followers: newFollowers
                         });
                     });
                     
-                    showMessage(`¡Compraste ${formatNumber(tokensReceived, 8)} ${allCoinsCache.get(selectedCoinId).symbol}!`);
+                    showMessage(`¡Compraste ${formatNumber(tradeResult.tokensOut)} ${allCoinsCache.get(selectedCoinId).symbol}!`);
                     buyAmountEl.value = '';
 
                 } catch (error) {
@@ -1887,13 +2199,14 @@
             // Formulario de Venta
             sellFormEl.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                // --- CAMBIO: Leer valor reemplazando coma por punto ---
-                const tokensToSell = parseFloat(sellAmountEl.value.replace(',', '.'));
-                // --- FIN DEL CAMBIO ---
+                // Usar la función de parseo
+                const tokensToSell = parseDecimalInput(sellAmountEl.value);
                 
                 if (!selectedCoinId || isNaN(tokensToSell) || tokensToSell <= 0) return showMessage("Ingresa un monto válido.");
 
                 try {
+                    let ssolReceived = 0; // Para el mensaje de éxito
+                    
                     await runTransaction(db, async (transaction) => {
                         const playerRef = doc(playersRef, currentUserId);
                         const coinRef = doc(roomRef, selectedCoinId);
@@ -1904,90 +2217,103 @@
                         ]);
 
                         if (!playerDoc.exists() || !coinDoc.exists()) throw new Error("Datos no encontrados.");
-                        // A-f-a-n: Pequeño margen de error para floats
-                        if (!walletDoc.exists() || (walletDoc.data().amount + 0.00000001) < tokensToSell) throw new Error("No tienes suficientes tokens.");
+                        
+                        const walletData = walletDoc.exists() ? walletDoc.data() : { amount: 0 };
+                        // Validar con tolerancia
+                        if (!walletDoc.exists() || walletData.amount < (tokensToSell - 0.000001)) {
+                            throw new Error(`No tienes suficientes tokens. Tienes: ${formatNumber(walletData.amount)}`);
+                        }
+                        
+                        // Usar la cantidad exacta de la billetera si se pasa por poco (ej: 100% con redondeo)
+                        const finalTokensToSell = Math.min(tokensToSell, walletData.amount);
 
                         let playerData = playerDoc.data();
                         let coinData = coinDoc.data();
-                        const walletData = walletDoc.data();
 
-                        // 1. Simular bot reactivo
+                        // 1. Simular trade de bot (reactivo)
                         const botUpdates = simulateBotTrade(coinData, 'reactive_sell');
                         coinData = { ...coinData, ...botUpdates };
                         
-                        // 2. Calcular trade del jugador (NUEVA LÓGICA DE PRECIO)
+                        // 2. Calcular el impacto de PRECIO del JUGADOR
+                        const tradeResult = calculateSellImpact(finalTokensToSell, coinData.sSolPool, coinData.tokenPool);
                         
-                        // CAMBIO: Ambas fees van al creador
-                        const globalFee = tokensToSell * GLOBAL_FEE_RATE;
-                        const tokensForTrade = tokensToSell - globalFee;
-
-                        // CALCULAR IMPACTO EN PRECIO
-                        const k = coinData.sSolPool * coinData.tokenPool;
-                        // CAMBIO: LP Fee ya no se añade a la pool
-                        const newTokenPool_k = coinData.tokenPool + tokensForTrade;
-                        const newSsolPool = k / newTokenPool_k;
+                        ssolReceived = tradeResult.ssolOut; // Guardar para el mensaje
+                        if (ssolReceived <= 0) throw new Error("Liquidez demasiado baja para vender.");
                         
-                        const ssolReceived = coinData.sSolPool - newSsolPool;
-                        const finalTokenPool = newTokenPool_k;
-                        const ssolTraded = ssolReceived; 
-
-                        if (ssolReceived < 0.00000001) throw new Error("Liquidez demasiado baja.");
+                        // 3. Preparar actualizaciones
                         
-                        // ESTE ES EL NUEVO PRECIO *DESPUÉS* DE LA VENTA
-                        const newPrice = newSsolPool / finalTokenPool; 
-                        
-                        // 3. Actualizar historial y contadores
+                        // Historiales
+                        const newPrice = tradeResult.newPrice;
                         const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice);
                         const newAllTimeLow = Math.min(coinData.allTimeLow || 999999, newPrice); 
-                        const newMarketCap = newPrice * (finalTokenPool + coinData.botTokenPool);
+                        const newMarketCap = newPrice * (tradeResult.newTokenPool + coinData.botTokenPool);
                         const newHistory = [...coinData.priceHistory, newPrice].slice(-50);
-                        const newVolumeHistory = [...(coinData.volumeHistory || []), ssolTraded].slice(-50);
-                        const newVolume = coinData.volume + ssolTraded;
-                        const newCreatorFeesToken = (coinData.creatorFeesToken || 0) + globalFee; // CAMBIO
+                        const newVolumeHistory = [...(coinData.volumeHistory || []), tradeResult.ssolTraded].slice(-50);
+                        const newVolume = coinData.volume + tradeResult.ssolTraded;
+                        const newCreatorFeesToken = (coinData.creatorFeesToken || 0) + tradeResult.feesCollectedToken;
 
+                        // Holders
                         let newHolderCount = coinData.holderCount;
                         let holderChange = 0;
                         const currentTokens = walletData.amount;
-                        const newAmountInWallet = currentTokens - tokensToSell;
-                        
+                        const newAmountInWallet = currentTokens - finalTokensToSell;
                         if (newAmountInWallet < 0.00000001 && currentTokens >= 0.00000001) { 
                             newHolderCount--;
                             holderChange = -1; 
                         }
                         const newLastHolderCountChange = (coinData.lastHolderCountChange || 0) + holderChange;
 
-                        const playerTradeHistory = walletDoc.exists() ? walletDoc.data().tradeHistory || [] : [];
+                        // Billetera del Jugador
+                        const playerTradeHistory = walletData.tradeHistory || [];
                         const updatedTradeHistory = [...playerTradeHistory, { 
                             type: 'sell', 
-                            price: newPrice, // Loggear el precio de venta
-                            amountSsol: ssolReceived, 
-                            coinId: selectedCoinId, 
+                            price: newPrice, // Precio de impacto
+                            amountSsol: ssolReceived, // sSOL recibido
+                            amountToken: finalTokensToSell,
                             timestamp: new Date()
                         }].slice(-50);
                         
-                        // 4. Aplicar transacciones
-                        transaction.update(playerRef, { sSOL_balance: increment(ssolReceived) }); // Usar increment() es más seguro
-                        transaction.set(walletRef, { amount: newAmountInWallet, tradeHistory: updatedTradeHistory }, { merge: true });
+                        // 4. Ejecutar Transacción
                         
+                        // Actualizar Jugador (Sumar el sSOL recibido)
+                        transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance + ssolReceived });
+                        
+                        // Actualizar Billetera
+                        transaction.set(walletRef, { 
+                            amount: newAmountInWallet, 
+                            tradeHistory: updatedTradeHistory,
+                            lastAcquired: serverTimestamp() // Actualizar para ordenar portafolio
+                        }, { merge: true });
+                        
+                        // Incrementar seguidores del creador (si el bot siguió)
                         if (botUpdates.creatorFollowsIncrement > 0) {
                             const creatorRef = doc(playersRef, coinData.creatorId);
-                            transaction.update(creatorRef, { socialFollowers: increment(botUpdates.creatorFollowsIncrement) });
+                            const creatorDoc = await transaction.get(creatorRef);
+                            if (creatorDoc.exists()) {
+                                transaction.update(creatorRef, { socialFollowers: increment(botUpdates.creatorFollowsIncrement) });
+                            }
                         }
                         delete botUpdates.creatorFollowsIncrement;
                         
+                        // Actualizar Moneda
                         transaction.update(coinRef, {
                              ...botUpdates, 
-                            sSolPool: newSsolPool, tokenPool: finalTokenPool,
-                            currentPrice: newPrice, priceHistory: newHistory,
-                            volume: newVolume, volumeHistory: newVolumeHistory,
-                            marketCap: newMarketCap, holderCount: newHolderCount,
+                            sSolPool: tradeResult.newSsolPool, 
+                            tokenPool: tradeResult.newTokenPool,
+                            currentPrice: newPrice, 
+                            priceHistory: newHistory,
+                            volume: newVolume, 
+                            volumeHistory: newVolumeHistory,
+                            marketCap: newMarketCap, 
+                            holderCount: newHolderCount,
                             lastHolderCountChange: newLastHolderCountChange,
                             creatorFeesToken: newCreatorFeesToken,
-                            allTimeHigh: newAllTimeHigh, allTimeLow: newAllTimeLow
+                            allTimeHigh: newAllTimeHigh, 
+                            allTimeLow: newAllTimeLow
                         });
                     });
                     
-                    showMessage(`¡Vendiste ${formatNumber(tokensToSell, 8)} ${allCoinsCache.get(selectedCoinId).symbol}!`);
+                    showMessage(`¡Vendiste ${formatNumber(tokensToSell)} ${allCoinsCache.get(selectedCoinId).symbol} por ${formatNumber(ssolReceived)} sSOL!`);
                     sellAmountEl.value = '';
 
                 } catch (error) {
@@ -2001,7 +2327,7 @@
                     const percent = parseFloat(btn.dataset.percent);
                     const coin = myPortfolioCache.get(selectedCoinId);
                     if (coin) {
-                        // CAMBIO: toFixed(2) para arreglar el bug de 100%
+                        // CORRECCIÓN: Redondear a 2 decimales para evitar errores
                         sellAmountEl.value = (coin.amount * percent).toFixed(2);
                     } else {
                         showMessage("No tienes esta moneda.");
@@ -2009,93 +2335,8 @@
                     }
                 });
             });
-
-            // --- Lógica del botón "Ver PnL" ---
-            showPnlBtn.addEventListener('click', () => {
-                if (!selectedCoinId) return;
-
-                const myPortfolio = myPortfolioCache.get(selectedCoinId);
-                const coinData = allCoinsCache.get(selectedCoinId);
-
-                if (!coinData) {
-                    return showMessage("No se encontraron datos de la moneda.");
-                }
-                
-                const placeholderImg = `https://placehold.co/40x40/${coinData.id.slice(0,6)}/FFFFFF?text=${coinData.symbol}`;
-                const coinImg = coinData.imageUrl || placeholderImg;
-
-                const tradeHistory = myPortfolio?.tradeHistory || [];
-                const currentHoldings = myPortfolio?.amount || 0;
-
-                if (tradeHistory.length === 0 && currentHoldings === 0) {
-                     return showMessage("No tienes historial de tradeo ni holdings para esta moneda.");
-                }
-
-                const currentValue = currentHoldings * coinData.currentPrice;
-                const totalSsolSpent = tradeHistory
-                    .filter(t => t.type === 'buy')
-                    .reduce((sum, t) => sum + t.amountSsol, 0);
-                
-                const totalSsolReceived = tradeHistory
-                    .filter(t => t.type === 'sell')
-                    .reduce((sum, t) => sum + t.amountSsol, 0);
-
-                let pnlSsol = (currentValue + totalSsolReceived) - totalSsolSpent;
-                let pnlPercent = 0;
-
-                if (totalSsolSpent > 0) {
-                    pnlPercent = (pnlSsol / totalSsolSpent) * 100;
-                } else if (pnlSsol > 0) {
-                    pnlPercent = Infinity; // Ganancia pura (ej. Airdrop, tokens de creador)
-                }
-                
-                const pnlSign = pnlSsol >= 0 ? '+' : '';
-                const pnlColor = pnlSsol >= 0 ? 'text-solana-green' : 'text-red-500';
-                
-                let pnlPercentText = `(${pnlSign}${formatNumber(pnlPercent)}%)`;
-                if (pnlPercent === Infinity) pnlPercentText = '(+∞%)'; // Ganancia infinita
-                if (totalSsolSpent === 0 && pnlSsol === 0) pnlPercentText = '(0%)'; // Creador que no ha vendido
-
-                // Poblar el modal de PnL
-                pnlCardContentEl.innerHTML = `
-                    <div class="flex items-center gap-3 mb-3">
-                        <img src="${coinImg}" onerror="this.src='${placeholderImg}'" alt="${coinData.name}" class="w-10 h-10 rounded-full bg-gray-700">
-                        <div>
-                            <h3 class="text-xl font-bold text-white">${coinData.name} ($${coinData.symbol})</h3>
-                            <p class="text-sm text-gray-400">@ Solana Memecoin Sim</p>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-2">
-                        <span class="text-sm text-gray-400 block">PnL Realizado/No Realizado</span>
-                        <h4 class_="${pnlColor} text-3xl font-bold">${pnlSign}${formatCurrency(pnlSsol)} sSOL</h4>
-                        <span class_="${pnlColor} text-lg font-semibold">${pnlPercentText}</span>
-                    </div>
-                    
-                    <div class="border-t border-gray-700 pt-3 space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Valor Actual Holdings:</span>
-                            <span class="font-semibold">${formatCurrency(currentValue)} sSOL</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Total Gastado (Buy):</span>
-                            <span class="font-semibold">${formatCurrency(totalSsolSpent)} sSOL</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Total Recibido (Sell):</span>
-                            <span class="font-semibold">${formatCurrency(totalSsolReceived)} sSOL</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Holdings Actuales:</span>
-                            <span class="font-semibold">${formatNumber(currentHoldings, 8)} $${coinData.symbol}</span>
-                        </div>
-                    </div>
-                `;
-                
-                showModal(pnlModalEl);
-            });
             
-            // --- NUEVAS FUNCIONES: P2P, PANEL DE CREADOR, TIENDA, SOCIALFI ---
+            // --- NUEVAS FUNCIONES: P2P, PANEL DE CREADOR, TIENDA, SOCIALFI, CHAT ---
             
             sendSsolFormEl.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -2129,56 +2370,36 @@
                 creatorCoinsListEl.innerHTML = '';
                 let hasCoins = false;
                 
-                allCoinsCache.forEach((coin, coinId) => {
-                    if (coin.creatorId === currentUserId) {
-                        hasCoins = true;
-                        const itemEl = document.createElement('div');
-                        itemEl.className = 'bg-item-hover p-3 rounded-lg';
-                        
-                        // CAMBIO: Añadido botón de Activar/Desactivar Bot
-                        const botBtnClass = coin.isWashBotActive 
-                            ? 'bg-red-600 hover:bg-red-700' 
-                            : 'bg-green-600 hover:bg-green-700';
-                        const botBtnText = coin.isWashBotActive ? 'Desactivar Bot' : 'Activar Bot';
+                // Ordenar monedas por fecha de creación (más nuevas primero)
+                const myCoins = Array.from(allCoinsCache.values())
+                    .filter(coin => coin.creatorId === currentUserId)
+                    .sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
 
-                        itemEl.innerHTML = `
-                            <div class="flex justify-between items-center mb-3">
-                                <span class="font-semibold text-lg">${coin.name} (${coin.symbol})</span>
-                                <button data-coin-id="${coinId}" class="go-live-btn ${coin.isLive ? 'bg-gray-600' : 'bg-red-600 hover:bg-red-700'} text-white font-bold py-2 px-3 rounded-md text-sm transition">
-                                    ${coin.isLive ? 'EN VIVO' : 'Ir en Vivo'}
-                                </button>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="bg-gray-700/50 p-3 rounded-lg">
-                                    <h4 class="font-semibold mb-2">Comisiones Globales</h4>
-                                    <div class="text-sm text-gray-300">sSOL: <span id="fee-ssol-${coinId}">${formatNumber(coin.creatorFeesSsol, 8)}</span></div>
-                                    <div class="text-sm text-gray-300">${coin.symbol}: <span id="fee-token-${coinId}">${formatNumber(coin.creatorFeesToken, 8)}</span></div>
-                                    <button data-coin-id="${coinId}" class="claim-fee-btn w-full mt-2 bg-solana-green text-gray-900 font-bold py-2 px-3 rounded-md text-sm hover:bg-opacity-80 transition">Reclamar</button>
-                                </div>
-                                <div class="bg-gray-700/50 p-3 rounded-lg">
-                                    <h4 class="font-semibold mb-2">Bots de Volumen</h4>
-                                    <div class="text-sm text-gray-300 mb-2">Presupuesto: ${formatNumber(coin.washTradeBudget || 0)} sSOL</div>
-                                    <form class="wash-trade-form flex gap-2" data-coin-id="${coinId}">
-                                        <input type="number" step="0.1" min="0.1" placeholder="sSOL" class="w-full px-2 py-1 bg-gray-900 border border-gray-600 rounded-md text-sm">
-                                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-sm">Añadir</button>
-                                    </form>
-                                    <button data-coin-id="${coinId}" class="toggle-wash-bot-btn w-full mt-2 ${botBtnClass} text-white font-bold py-2 px-3 rounded-md text-sm transition">
-                                        ${botBtnText}
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                        creatorCoinsListEl.appendChild(itemEl);
-                    }
+                myCoins.forEach(coin => {
+                    hasCoins = true;
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'bg-item-hover p-3 rounded-lg';
+                    itemEl.innerHTML = `
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="font-semibold text-lg">${coin.name} (${coin.symbol})</span>
+                            <button data-coin-id="${coin.id}" class="go-live-btn ${coin.isLive ? 'bg-gray-600' : 'bg-red-600 hover:bg-red-700'} text-white font-bold py-2 px-3 rounded-md text-sm transition">
+                                ${coin.isLive ? 'EN VIVO' : 'Ir en Vivo'}
+                            </button>
+                        </div>
+                        <div class="bg-gray-700/50 p-3 rounded-lg">
+                            <h4 class="font-semibold mb-2">Comisiones (Fees) Ganadas</h4>
+                            <div class="text-sm text-gray-300">sSOL: <span id="fee-ssol-${coin.id}">${formatNumber(coin.creatorFeesSsol)}</span></div>
+                            <div class="text-sm text-gray-300">${coin.symbol}: <span id="fee-token-${coin.id}">${formatNumber(coin.creatorFeesToken)}</span></div>
+                            <button data-coin-id="${coin.id}" class="claim-fee-btn w-full mt-2 bg-solana-green text-gray-900 font-bold py-2 px-3 rounded-md text-sm hover:bg-opacity-80 transition">Reclamar Fees</button>
+                        </div>
+                    `;
+                    creatorCoinsListEl.appendChild(itemEl);
                 });
                 
                 if (!hasCoins) creatorCoinsListEl.innerHTML = '<p class="text-gray-400 text-center">No has creado ninguna moneda.</p>';
                 
                 creatorCoinsListEl.querySelectorAll('.claim-fee-btn').forEach(btn => btn.addEventListener('click', (e) => claimFees(e.target.dataset.coinId, e.target)));
                 creatorCoinsListEl.querySelectorAll('.go-live-btn').forEach(btn => btn.addEventListener('click', (e) => toggleLive(e.target.dataset.coinId, e.target)));
-                creatorCoinsListEl.querySelectorAll('.wash-trade-form').forEach(form => form.addEventListener('submit', (e) => addWashTradeBudget(e, e.target.dataset.coinId)));
-                // NUEVO: Listener para activar/desactivar bot
-                creatorCoinsListEl.querySelectorAll('.toggle-wash-bot-btn').forEach(btn => btn.addEventListener('click', (e) => toggleWashBot(e.target.dataset.coinId, e.target)));
                 
                 showModal(creatorDashboardModalEl);
             }
@@ -2204,7 +2425,10 @@
                         
                         transaction.update(coinRef, { creatorFeesSsol: 0, creatorFeesToken: 0 });
                         transaction.update(playerRef, { sSOL_balance: increment(ssolToClaim) });
-                        transaction.set(walletRef, { amount: walletData.amount + tokensToClaim }, { merge: true });
+                        transaction.set(walletRef, { 
+                            amount: (walletData.amount || 0) + tokensToClaim,
+                            lastAcquired: serverTimestamp() // Actualizar para ordenar
+                        }, { merge: true });
                     });
                     showMessage("¡Comisiones reclamadas!");
                     btn.textContent = "Reclamado";
@@ -2232,54 +2456,6 @@
                 } catch (e) { showMessage(e.message); btn.disabled = false; }
             }
             
-            async function addWashTradeBudget(e, coinId) {
-                e.preventDefault();
-                const form = e.target; const input = form.querySelector('input'); const btn = form.querySelector('button');
-                const amount = parseFloat(input.value);
-                if (isNaN(amount) || amount <= 0) return showMessage("Monto inválido.");
-                
-                btn.disabled = true; btn.textContent = '...';
-                try {
-                    await runTransaction(db, async (transaction) => {
-                        const playerRef = doc(playersRef, currentUserId); const coinRef = doc(roomRef, coinId);
-                        const [playerDoc, coinDoc] = await Promise.all([ transaction.get(playerRef), transaction.get(coinRef) ]);
-                        if (!playerDoc.exists() || !coinDoc.exists()) throw new Error("Datos no encontrados.");
-                        if (playerDoc.data().sSOL_balance < amount) throw new Error("sSOL insuficiente.");
-                        
-                        transaction.update(playerRef, { sSOL_balance: increment(-amount) });
-                        transaction.update(coinRef, { washTradeBudget: increment(amount) });
-                    });
-                    showMessage(`¡${formatNumber(amount)} sSOL añadidos al bot de volumen!`);
-                    input.value = '';
-                } catch (e) { showMessage(e.message); }
-                btn.disabled = false; btn.textContent = 'Añadir';
-            }
-
-            // NUEVA FUNCIÓN: Activar/Desactivar Bot de Volumen
-            async function toggleWashBot(coinId, btn) {
-                const coin = allCoinsCache.get(coinId);
-                if (!coin) return;
-                
-                const newState = !coin.isWashBotActive;
-                btn.disabled = true; btn.textContent = '...';
-                
-                try {
-                    const coinRef = doc(roomRef, coinId);
-                    await updateDoc(coinRef, { isWashBotActive: newState });
-                    
-                    showMessage(newState ? "Bot de volumen activado." : "Bot de volumen desactivado.");
-                    btn.textContent = newState ? "Desactivar Bot" : "Activar Bot";
-                    btn.classList.toggle('bg-red-600', newState);
-                    btn.classList.toggle('hover:bg-red-700', newState);
-                    btn.classList.toggle('bg-green-600', !newState);
-                    btn.classList.toggle('hover:bg-green-700', !newState);
-                    btn.disabled = false;
-                } catch (e) {
-                    showMessage(e.message);
-                    btn.disabled = false;
-                }
-            }
-            
             function showLiveStream() {
                 if (!selectedCoinId) return;
                 const coin = allCoinsCache.get(selectedCoinId); if (!coin) return;
@@ -2299,11 +2475,11 @@
             
             async function boostLiveStream(level) {
                 if (!selectedCoinId) return;
-                let boostCost = 0, viewerBonus = 0, followerBonus = 0, washTradeBonus = 0;
+                let boostCost = 0, viewerBonus = 0, followerBonus = 0;
                 switch (level) {
-                    case 'small':  boostCost = 0.1; viewerBonus = 100 + Math.floor(Math.random() * 100); followerBonus = 10 + Math.floor(Math.random() * 20); washTradeBonus = 5; break;
-                    case 'medium': boostCost = 1;   viewerBonus = 500 + Math.floor(Math.random() * 500); followerBonus = 50 + Math.floor(Math.random() * 50); washTradeBonus = 20; break;
-                    case 'large':  boostCost = 10;  viewerBonus = 2000 + Math.floor(Math.random() * 3000); followerBonus = 200 + Math.floor(Math.random() * 300); washTradeBonus = 100; break;
+                    case 'small':  boostCost = 0.1; viewerBonus = 100 + Math.floor(Math.random() * 100); followerBonus = 10 + Math.floor(Math.random() * 20); break;
+                    case 'medium': boostCost = 1;   viewerBonus = 500 + Math.floor(Math.random() * 500); followerBonus = 50 + Math.floor(Math.random() * 50); break;
+                    case 'large':  boostCost = 10;  viewerBonus = 2000 + Math.floor(Math.random() * 3000); followerBonus = 200 + Math.floor(Math.random() * 300); break;
                     default: return showMessage("Nivel de boost inválido.");
                 }
                 
@@ -2320,8 +2496,7 @@
                         transaction.update(playerRef, { sSOL_balance: increment(-boostCost) });
                         transaction.update(coinRef, { 
                             liveViewers: increment(viewerBonus),
-                            followers: increment(followerBonus),
-                            washTradeBudget: increment(washTradeBonus)
+                            followers: increment(followerBonus)
                         });
                     });
                     showMessage(`¡Boost (${level}) aplicado!`);
@@ -2329,10 +2504,15 @@
                 if (btn) { btn.disabled = false; btn.textContent = `Boost (${boostCost} sSOL)`; }
             }
             
-            document.querySelectorAll('#buy-lambo-btn, #buy-mansion-btn').forEach(btn => {
+            // Botones de la Tienda (Lujo y Oficina)
+            document.querySelectorAll('.buy-asset-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
-                    const item = e.target.dataset.item; const cost = parseFloat(e.target.dataset.cost);
+                    const item = e.target.dataset.item; 
+                    const cost = parseFloat(e.target.dataset.cost);
+                    const category = e.target.dataset.category; // 'luxury' o 'office'
+                    
                     e.target.disabled = true; e.target.textContent = '...';
+                    
                     try {
                         await runTransaction(db, async (transaction) => {
                             const playerRef = doc(playersRef, currentUserId);
@@ -2340,12 +2520,17 @@
                             if (!playerDoc.exists()) throw new Error("No se encontró al jugador.");
                             if (playerDoc.data().sSOL_balance < cost) throw new Error("sSOL insuficiente.");
                             
+                            let updateField = `assets.${item}`; // Lujo por defecto
+                            if (category === 'office') {
+                                updateField = `officeItems.${item}`; // Campo de Oficina
+                            }
+                            
                             transaction.update(playerRef, {
                                 sSOL_balance: increment(-cost),
-                                [`assets.${item}`]: increment(1)
+                                [updateField]: increment(1)
                             });
                         });
-                        showMessage(`¡Felicidades! ¡Compraste un ${item === 'lambo' ? 'Lambo' : 'Mansión'}!`);
+                        showMessage(`¡Felicidades! ¡Compraste un ${item}!`);
                     } catch (e) { showMessage(e.message); }
                     e.target.disabled = false; e.target.textContent = 'Comprar';
                 });
@@ -2374,9 +2559,10 @@
                 if (!postText) return showMessage("El post no puede estar vacío.");
 
                 try {
-                    const postRef = doc(socialPostsRef); // Usar la colección global
+                    //const postRef = doc(socialPostsRef); // Usar la colección global
                     const player = allPlayersCache.get(currentUserId);
-                    await setDoc(postRef, {
+                    // Usar addDoc para Firestore v9+
+                    await addDoc(socialPostsRef, {
                         userId: currentUserId,
                         username: player.username, // Guardar denormalizado para el feed
                         avatarUrl: player.avatarUrl, // Guardar denormalizado para el feed
@@ -2390,6 +2576,28 @@
                     createSocialPostFormEl.reset();
                     showPage('page-social'); // Ir al feed
                 } catch (error) { showMessage("Error al publicar post."); }
+            });
+            
+            sendChatMessageFormEl.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const text = chatMessageInputEl.value.trim();
+                if (!text) return;
+                
+                chatMessageInputEl.value = '';
+                
+                try {
+                    const player = allPlayersCache.get(currentUserId);
+                    await addDoc(chatMessagesRef, {
+                        userId: currentUserId,
+                        username: player.username,
+                        avatarUrl: player.avatarUrl,
+                        text: text,
+                        timestamp: serverTimestamp()
+                    });
+                } catch (error) {
+                    console.error("Error al enviar mensaje:", error);
+                    chatMessageInputEl.value = text; // Devolver el texto si falla
+                }
             });
             
             async function promotePost(postId, btn) {
@@ -2430,10 +2638,32 @@
                 // Actualizar botón de Seguir
                 updateFollowButton();
                 
-                // Cargar posts del jugador
+                // Cargar posts y monedas
                 playerProfilePostsEl.innerHTML = '<p class="text-gray-400 text-sm">Cargando posts...</p>';
+                playerProfileCreatedCoinsEl.innerHTML = '<p class="text-gray-400 text-sm">Cargando monedas...</p>';
                 showModal(playerProfileModalEl);
                 
+                // Cargar Monedas Creadas
+                const createdCoins = Array.from(allCoinsCache.values())
+                    .filter(coin => coin.creatorId === playerId)
+                    .sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
+                    
+                playerProfileCreatedCoinsEl.innerHTML = '';
+                if (createdCoins.length === 0) {
+                    playerProfileCreatedCoinsEl.innerHTML = '<p class="text-gray-400 text-sm">Este jugador no ha creado monedas.</p>';
+                } else {
+                    createdCoins.forEach(coin => {
+                        const coinEl = document.createElement('div');
+                        coinEl.className = 'bg-item-hover p-2 rounded-lg text-sm flex gap-2 items-center';
+                        coinEl.innerHTML = `
+                            <img src="${coin.imageUrl || 'https://via.placeholder.com/24/374151/FFFFFF?text=C'}" alt="coin" class="w-6 h-6 rounded-full">
+                            <span class="font-semibold">${coin.name} (${coin.symbol})</span>
+                        `;
+                        playerProfileCreatedCoinsEl.appendChild(coinEl);
+                    });
+                }
+                
+                // Cargar Posts
                 const postsQuery = query(socialPostsRef, orderBy('createdAt', 'desc'), limit(10));
                 const postsSnapshot = await getDocs(postsQuery);
                 playerProfilePostsEl.innerHTML = '';
@@ -2477,7 +2707,10 @@
                         const myPlayerRef = doc(playersRef, currentUserId);
                         const targetPlayerRef = doc(playersRef, selectedProfilePlayerId);
                         
-                        const currentFollows = Array.from(myFollowsCache);
+                        const myPlayerDoc = await transaction.get(myPlayerRef);
+                        if (!myPlayerDoc.exists()) throw new Error("No se encontró tu perfil.");
+                        
+                        const currentFollows = myPlayerDoc.data().following || [];
                         
                         if (isFollowing) {
                             // Dejar de seguir
@@ -2495,9 +2728,12 @@
                     });
                     
                     updateFollowButton();
+                    // Actualizar UI localmente (el listener lo hará eventualmente, pero esto es más rápido)
                     const targetPlayer = allPlayersCache.get(selectedProfilePlayerId);
                     if (targetPlayer) {
-                        playerProfileFollowersEl.textContent = formatNumber(targetPlayer.socialFollowers + (isFollowing ? -1 : 1));
+                        const newFollowerCount = (targetPlayer.socialFollowers || 0) + (isFollowing ? -1 : 1);
+                        playerProfileFollowersEl.textContent = formatNumber(newFollowerCount);
+                        allPlayersCache.set(selectedProfilePlayerId, { ...targetPlayer, socialFollowers: newFollowerCount });
                     }
 
                 } catch (e) {
@@ -2518,16 +2754,86 @@
                     showMessage("Necesitas al menos 50 seguidores.");
                 }
             });
+            
+            // --- Lógica de PnL ---
+            function showPnlModal(coinId) {
+                if (!coinId) return;
+                
+                const coinData = allCoinsCache.get(coinId);
+                const portfolioItem = myPortfolioCache.get(coinId);
+                
+                if (!coinData || !portfolioItem) {
+                    return showMessage("No tienes historial de trades para esta moneda.");
+                }
+
+                const tradeHistory = portfolioItem.tradeHistory || [];
+                const currentTokens = portfolioItem.amount || 0;
+                
+                let totalSsolInvested = 0;
+                let totalTokensBought = 0;
+                
+                tradeHistory.forEach(trade => {
+                    if (trade.type === 'buy') {
+                        totalSsolInvested += trade.amountSsol || 0;
+                        totalTokensBought += trade.amountToken || 0;
+                    } else if (trade.type === 'sell') {
+                        // Reducir la inversión proporcionalmente a la venta
+                        if (totalTokensBought > 0) {
+                            const sellProportion = (trade.amountToken || 0) / totalTokensBought;
+                            totalSsolInvested -= totalSsolInvested * sellProportion;
+                            totalTokensBought -= trade.amountToken || 0;
+                        }
+                    }
+                });
+
+                const avgBuyPrice = (totalTokensBought > 0) ? totalSsolInvested / totalTokensBought : 0;
+                const currentValueInSsol = currentTokens * coinData.currentPrice;
+                
+                const pnlSsol = currentValueInSsol - totalSsolInvested;
+                const pnlPercent = (totalSsolInvested > 0) ? (pnlSsol / totalSsolInvested) * 100 : 0;
+                
+                // Actualizar UI del Modal
+                document.getElementById('pnl-card-coin-symbol').textContent = coinData.symbol;
+                
+                const pnlPercentEl = document.getElementById('pnl-card-percentage');
+                const pnlSsolEl = document.getElementById('pnl-card-ssol');
+                const cardContentEl = document.getElementById('pnl-card-content');
+                
+                pnlPercentEl.textContent = `${pnlPercent >= 0 ? '+' : ''}${formatNumber(pnlPercent)}%`;
+                pnlSsolEl.textContent = `${pnlSsol >= 0 ? '+' : ''}${formatNumber(pnlSsol)} sSOL`;
+                
+                if (pnlSsol >= 0) {
+                    pnlPercentEl.classList.remove('text-red-400');
+                    pnlPercentEl.classList.add('text-green-400');
+                    pnlSsolEl.classList.remove('text-red-400');
+                    pnlSsolEl.classList.add('text-gray-200');
+                    cardContentEl.classList.remove('pnl-card-gradient-loss');
+                    cardContentEl.classList.add('pnl-card-gradient-win');
+                } else {
+                    pnlPercentEl.classList.remove('text-green-400');
+                    pnlPercentEl.classList.add('text-red-400');
+                    pnlSsolEl.classList.remove('text-gray-200');
+                    pnlSsolEl.classList.add('text-red-400');
+                    cardContentEl.classList.remove('pnl-card-gradient-win');
+                    cardContentEl.classList.add('pnl-card-gradient-loss');
+                }
+                
+                document.getElementById('pnl-card-invested').textContent = formatNumber(totalSsolInvested);
+                document.getElementById('pnl-card-current-value').textContent = formatNumber(currentValueInSsol);
+                document.getElementById('pnl-card-tokens').textContent = formatNumber(currentTokens);
+                document.getElementById('pnl-card-avg-buy').textContent = formatPrice(avgBuyPrice);
+                
+                showModal(pnlCardModalEl);
+            }
 
 
             // --- INICIAR EL JUEGO ---
             initAuth();
             initChart();
             
-            setTimeout(proactiveBotLoop, 5000); 
-            setTimeout(washTradeBotLoop, 3000); 
+            setTimeout(proactiveBotLoop, 5000); // Iniciar el loop de bots
             
-            showMessage("¡Bienvenido! Lógica de trade mejorada, PnL visual y bots de volumen actualizados.");
+            showMessage("¡Bienvenido! Nuevo Chat Global, Oficina y Tienda de Lujo. Firebase actualizado.");
         
         } // --- FIN: ENVOLTORIO MAIN ASYNC ---
 
