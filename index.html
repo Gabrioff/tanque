@@ -216,7 +216,7 @@
         import { 
             getAuth, 
             signInAnonymously, 
-            signInWithCustomToken, 
+            signInWithCustomToken, // Todavía se importa, pero no se usará
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
@@ -237,9 +237,27 @@
         // --- INICIO: ENVOLTORIO MAIN ASYNC ---
         async function main() {
         
-            // --- CONFIGURACIÓN DE FIREBASE ---
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-memecoin-sim';
-            let firebaseConfig;
+            // --- CONFIGURACIÓN DE FIREBASE (TU PROYECTO) ---
+            
+            // ¡Importante! Usa tu ID de proyecto aquí para que las rutas de la base de datos coincidan.
+            const appId = 'speed-of-glory'; 
+
+            const firebaseConfig = {
+              apiKey: "AIzaSyAKOG8qGf3lwZpZrqyMeUSuUHRpltBExHg",
+              authDomain: "speed-of-glory.firebaseapp.com",
+              databaseURL: "https://speed-of-glory-default-rtdb.firebaseio.com",
+              projectId: "speed-of-glory",
+              storageBucket: "speed-of-glory.firebasestorage.app",
+              messagingSenderId: "824426979090",
+              appId: "1:824426979090:web:dd3cb392e667e5e0e91dcb",
+              measurementId: "G-NY69W2S5KT"
+            };
+            
+            const app = initializeApp(firebaseConfig);
+            // --- FIN DE LA CONFIGURACIÓN ---
+            
+            const db = getFirestore(app);
+            const auth = getAuth(app);
             
             // --- REFERENCIAS AL DOM (MODALES) ---
             const messageModalEl = document.getElementById('message-modal');
@@ -290,24 +308,6 @@
                     child.classList.add('bg-gray-800');
                 });
             });
-
-
-            try {
-                firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-            } catch (e) {
-                console.error("Error parsing Firebase config:", e);
-                showMessage("Error crítico: La configuración de Firebase es inválida.");
-                return;
-            }
-
-            if (!firebaseConfig.apiKey) {
-                showMessage("Error crítico: La configuración de Firebase está incompleta.");
-                return;
-            }
-            
-            const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
-            const auth = getAuth(app);
 
             // --- VARIABLES GLOBALES DEL JUEGO ---
             let currentUserId = null;
@@ -379,11 +379,8 @@
                         await joinGame(user.uid);
                     } else {
                         try {
-                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                await signInWithCustomToken(auth, __initial_auth_token);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
+                            // Iniciar sesión anónimamente por defecto
+                            await signInAnonymously(auth);
                         } catch (error) {
                             console.error("Error de autenticación:", error);
                             showMessage("Error al conectar con el servidor. Por favor, recarga.");
@@ -793,7 +790,7 @@
                             currentPrice: price,
                             priceHistory: [price],
                             volumeHistory: [0], 
-                            allTimeHigh: price, // <-- NUEVO: ATH Inicial
+                            allTimeHigh: price, // ATH Inicial
                             createdAt: serverTimestamp(),
                             marketCap: initialSsol * 2, 
                             volume: 0,
@@ -858,7 +855,7 @@
                 let tradeRef = null; // Para log de trade
 
                 if (isBuy) { // BOT COMPRA
-                    // --- NUEVO: MONTO VARIABLE ---
+                    // Monto variable
                     const ssolToSpend = Math.pow(Math.random(), 2) * (botSsolPool * 0.1); // Sesgado a pequeño, máx 10%
                     if (ssolToSpend < 0.01 || botSsolPool < ssolToSpend) return {};
                     
@@ -883,7 +880,7 @@
                     
                 } else { // BOT VENDE
                     const isRugpull = ((playerAction === 'sell' || playerAction === 'proactive') && Math.random() < 0.1);
-                    // --- NUEVO: MONTO VARIABLE ---
+                    // Monto variable
                     const sellPercentage = isRugpull ? 0.5 : (Math.pow(Math.random(), 2) * 0.1); // Sesgado a pequeño, máx 10%
                     
                     const tokensToSell = botTokenPool * sellPercentage;
@@ -914,7 +911,7 @@
                 }
 
                 const newPrice = finalSsolPool / finalTokenPool;
-                // --- NUEVO: ACTUALIZAR ATH ---
+                // Actualizar ATH
                 const newAllTimeHigh = Math.max(allTimeHigh || 0, newPrice);
                 const newMarketCap = newPrice * (finalTokenPool + botTokenPool);
                 const newHistory = [...priceHistory, newPrice].slice(-50);
@@ -934,7 +931,7 @@
                     creatorFeesSsol: newCreatorFeesSsol,
                     creatorFeesToken: newCreatorFeesToken,
                     tradeLog: tradeRef, 
-                    allTimeHigh: newAllTimeHigh // <-- NUEVO: Devolver ATH
+                    allTimeHigh: newAllTimeHigh // Devolver ATH
                 };
             }
 
@@ -949,13 +946,13 @@
                         let tradeProbability = 0.0; // Base de no-comercio
 
                         if (allTimeHigh > 0 && (currentPrice / allTimeHigh) < 0.2) {
-                            // --- LÓGICA DE TOKEN MUERTO ---
+                            // LÓGICA DE TOKEN MUERTO
                             // El precio ha caído más del 80%
                             tradeProbability = 0.1; // 10% de probabilidad de que un bot lo "limpie"
                             buyProbability = 0.05; // 95% de probabilidad de que sea una venta (liquidación)
                             
                         } else {
-                            // --- LÓGICA DE HYPE (TOKEN VIVO) ---
+                            // LÓGICA DE HYPE (TOKEN VIVO)
                             const priceHistory = coin.priceHistory || [];
                             let priceChange = 0;
                             if (priceHistory.length > 1) {
@@ -973,7 +970,7 @@
                             const totalHypeScore = (priceChangeScore + volumeScore + holderScore) / 3;
                             tradeProbability = totalHypeScore * 0.5; // Prob. de comerciar (hasta 50%)
 
-                            // --- LÓGICA DE ASEGURAR GANANCIAS ---
+                            // LÓGICA DE ASEGURAR GANANCIAS
                             if (priceChange > 0) {
                                 // FOMO (subiendo)
                                 buyProbability = 0.5 + (totalHypeScore * 0.4); // Rango 0.5 a 0.9 (sesgo de compra)
@@ -1071,7 +1068,7 @@
                         
                         // 3. Calcular nuevos totales
                         const newPrice = finalSsolPool / newTokenPool;
-                        const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice); // <-- NUEVO: Actualizar ATH
+                        const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice); // Actualizar ATH
                         const newMarketCap = newPrice * (newTokenPool + coinData.botTokenPool);
                         const newHistory = [...coinData.priceHistory, newPrice].slice(-50);
                         const newVolumeHistory = [...(coinData.volumeHistory || []), ssolTraded].slice(-50);
@@ -1120,7 +1117,7 @@
                             holderCount: newHolderCount,
                             lastHolderCountChange: newLastHolderCountChange,
                             creatorFeesSsol: newCreatorFeesSsol,
-                            allTimeHigh: newAllTimeHigh // <-- NUEVO: Guardar ATH
+                            allTimeHigh: newAllTimeHigh // Guardar ATH
                         });
                     });
                     
@@ -1190,7 +1187,7 @@
                         
                         // 3. Calcular nuevos totales
                         const newPrice = newSsolPool / finalTokenPool; 
-                        const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice); // <-- NUEVO: Actualizar ATH
+                        const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice); // Actualizar ATH
                         const newMarketCap = newPrice * (finalTokenPool + coinData.botTokenPool);
                         const newHistory = [...coinData.priceHistory, newPrice].slice(-50);
                         const newVolumeHistory = [...(coinData.volumeHistory || []), ssolTraded].slice(-50);
@@ -1240,7 +1237,7 @@
                             holderCount: newHolderCount,
                             lastHolderCountChange: newLastHolderCountChange,
                             creatorFeesToken: newCreatorFeesToken,
-                            allTimeHigh: newAllTimeHigh // <-- NUEVO: Guardar ATH
+                            allTimeHigh: newAllTimeHigh // Guardar ATH
                         });
                     });
                     
