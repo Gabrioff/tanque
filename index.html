@@ -1261,14 +1261,18 @@
                         const currentValue = coinData ? coin.amount * coinData.currentPrice : 0;
                         
                         const itemEl = document.createElement('div');
-                        itemEl.className = 'flex justify-between items-center bg-item-bg p-3 rounded-lg';
+                        // CORRECCIÓN: Añadir clase y data-attribute para updatePortfolioValues
+                        itemEl.className = 'portfolio-item flex justify-between items-center bg-item-bg p-3 rounded-lg';
+                        itemEl.dataset.coinId = coin.id; 
                         itemEl.innerHTML = `
                             <div>
                                 <div class="font-semibold">${coinName}</div>
-                                <div class="text-sm text-gray-400">${formatNumber(coin.amount)} tokens</div>
+                                <!-- CORRECCIÓN: Añadir clase -->
+                                <div class="portfolio-amount text-sm text-gray-400">${formatNumber(coin.amount)} tokens</div>
                             </div>
                             <div class="text-right">
-                                <div class="font-semibold">${formatCurrency(currentValue)}</div>
+                                <!-- CORRECCIÓN: Añadir clase -->
+                                <div class="portfolio-value font-semibold">${formatCurrency(currentValue)}</div>
                                 <div class="text-sm text-gray-400">Valor</div>
                             </div>
                         `;
@@ -1732,6 +1736,7 @@
                 try {
                     await runTransaction(db, async (transaction) => {
                         const playerRef = doc(playersRef, currentUserId);
+                        // CORRECCIÓN TRANSACCIÓN: Leer ANTES de escribir
                         const playerDoc = await transaction.get(playerRef);
 
                         if (!playerDoc.exists()) throw new Error("No se encontró tu jugador.");
@@ -1741,6 +1746,7 @@
                             throw new Error(`Fondos insuficientes. Necesitas ${formatNumber(totalCost)} sSOL (0.01 de fee + ${formatNumber(initialSsol)} de liquidez).`);
                         }
                         
+                        // --- INICIO ESCRITURAS ---
                         transaction.update(playerRef, { sSOL_balance: currentBalance - totalCost });
                         
                         const newCoinRef = doc(roomRef); 
@@ -1782,6 +1788,7 @@
                             tradeHistory: [],
                             lastAcquired: creationTime // <-- Ordenar por esto
                         });
+                        // --- FIN ESCRITURAS ---
                     });
                     
                     hideModal(createCoinModalEl); 
@@ -1962,6 +1969,7 @@
                             const coinRef = doc(roomRef, coinId);
                             try {
                                 await runTransaction(db, async (transaction) => {
+                                    // CORRECCIÓN TRANSACCIÓN: Leer ANTES de escribir
                                     const coinDoc = await transaction.get(coinRef);
                                     if (!coinDoc.exists()) return;
                                     
@@ -1970,33 +1978,41 @@
                                     
                                     if (Object.keys(botUpdates).length > 0) {
                                         
-                                        // Incrementar seguidores del creador si el bot decide seguir
+                                        let creatorRef = null;
+                                        let creatorDoc = null;
+                                        let randomPlayerRef = null;
+                                        let randomPlayerDoc = null;
+
+                                        // Leer ANTES si es necesario seguir
                                         if (botUpdates.creatorFollowsIncrement > 0) {
-                                            const creatorRef = doc(playersRef, coinData.creatorId);
-                                            // Solo actualizar si el creador existe
-                                            const creatorDoc = await transaction.get(creatorRef);
-                                            if (creatorDoc.exists()) {
-                                                transaction.update(creatorRef, {
-                                                    socialFollowers: increment(botUpdates.creatorFollowsIncrement)
-                                                });
+                                            creatorRef = doc(playersRef, coinData.creatorId);
+                                            creatorDoc = await transaction.get(creatorRef);
+                                        }
+                                        if (Math.random() < 0.1) { // 10% de probabilidad de seguir jugador aleatorio
+                                            const randomPlayerId = Array.from(allPlayersCache.keys())[Math.floor(Math.random() * allPlayersCache.size)];
+                                            if (randomPlayerId && randomPlayerId !== coinData.creatorId) {
+                                                randomPlayerRef = doc(playersRef, randomPlayerId);
+                                                randomPlayerDoc = await transaction.get(randomPlayerRef);
                                             }
+                                        }
+
+                                        // --- INICIO ESCRITURAS ---
+                                        // Incrementar seguidores del creador si el bot decide seguir y el creador existe
+                                        if (botUpdates.creatorFollowsIncrement > 0 && creatorDoc && creatorDoc.exists()) {
+                                            transaction.update(creatorRef, {
+                                                socialFollowers: increment(botUpdates.creatorFollowsIncrement)
+                                            });
                                         }
                                         delete botUpdates.creatorFollowsIncrement;
                                         
-                                        // Incrementar seguidores de un jugador aleatorio (simulando que ven el feed)
-                                        if (Math.random() < 0.1) { // 10% de probabilidad
-                                            const randomPlayerId = Array.from(allPlayersCache.keys())[Math.floor(Math.random() * allPlayersCache.size)];
-                                            if (randomPlayerId && randomPlayerId !== coinData.creatorId) {
-                                                 const randomPlayerRef = doc(playersRef, randomPlayerId);
-                                                 const randomPlayerDoc = await transaction.get(randomPlayerRef);
-                                                 if (randomPlayerDoc.exists()) {
-                                                    transaction.update(randomPlayerRef, { socialFollowers: increment(1) });
-                                                 }
-                                            }
+                                        // Incrementar seguidores de un jugador aleatorio
+                                        if (randomPlayerRef && randomPlayerDoc && randomPlayerDoc.exists()) {
+                                            transaction.update(randomPlayerRef, { socialFollowers: increment(1) });
                                         }
 
                                         botUpdates.lastHolderCountChange = 0; // Resetear el contador de holders
                                         transaction.update(coinRef, botUpdates);
+                                        // --- FIN ESCRITURAS ---
                                     }
                                 });
                             } catch (e) {
@@ -2073,17 +2089,22 @@
                 const ssolToSpend = parseFloat(buyAmountEl.value);
                 if (!selectedCoinId || isNaN(ssolToSpend) || ssolToSpend <= 0) return showMessage("Ingresa un monto válido.");
                 
+                let tradeResult; // Declara fuera para el mensaje
                 try {
-                    let tradeResult; // Declara fuera para el mensaje
                     await runTransaction(db, async (transaction) => {
                         const playerRef = doc(playersRef, currentUserId);
                         const coinRef = doc(roomRef, selectedCoinId);
                         const walletRef = doc(playersRef, currentUserId, 'wallet', selectedCoinId);
-                        
-                        const [playerDoc, coinDoc] = await Promise.all([
-                            transaction.get(playerRef), transaction.get(coinRef)
+                        // CORRECCIÓN TRANSACCIÓN: Leer creador ANTES si es necesario
+                        let creatorRef = null; 
+                        let creatorDoc = null; 
+
+                        // --- INICIO LECTURAS ---
+                        const [playerDoc, coinDoc, walletDoc] = await Promise.all([
+                            transaction.get(playerRef), 
+                            transaction.get(coinRef), 
+                            transaction.get(walletRef) 
                         ]);
-                        const walletDoc = await transaction.get(walletRef); // Cargar Billetera
                         
                         if (!playerDoc.exists() || !coinDoc.exists()) throw new Error("Datos no encontrados.");
                         
@@ -2092,6 +2113,16 @@
                         
                         if (playerData.sSOL_balance < ssolToSpend) throw new Error("sSOL insuficiente.");
                         
+                        // Determinar si es la primera compra para leer creador
+                        const currentTokens = walletDoc.exists() ? walletDoc.data().amount : 0;
+                        let creatorFollowsIncrement = 0;
+                        if (currentTokens < 0.00000001) { // Primera compra
+                            creatorFollowsIncrement = 1;
+                            creatorRef = doc(playersRef, coinData.creatorId);
+                            creatorDoc = await transaction.get(creatorRef); // Leer creador ahora
+                        }
+                        // --- FIN LECTURAS ---
+
                         // 1. Simular trade de bot (reactivo)
                         const botUpdates = simulateBotTrade(coinData, 'reactive_buy');
                         coinData = { ...coinData, ...botUpdates };
@@ -2101,9 +2132,7 @@
                         
                         if (tradeResult.tokensOut <= 0) throw new Error("Error en el cálculo del trade.");
 
-                        // 3. Preparar actualizaciones
-                        
-                        // Historiales
+                        // 3. Preparar actualizaciones (esto no escribe aún)
                         const newPrice = tradeResult.newPrice;
                         const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice); 
                         const newAllTimeLow = Math.min(coinData.allTimeLow || 999999, newPrice);
@@ -2113,32 +2142,23 @@
                         const newVolume = coinData.volume + tradeResult.ssolTraded;
                         const newCreatorFeesSsol = (coinData.creatorFeesSsol || 0) + tradeResult.feesCollectedSsol;
 
-                        // Holders
                         let newHolderCount = coinData.holderCount;
                         let holderChange = 0;
                         let newFollowers = coinData.followers || 0;
-                        let creatorFollowsIncrement = 0;
-                        const currentTokens = walletDoc.exists() ? walletDoc.data().amount : 0;
                         
-                        if (currentTokens < 0.00000001) { 
+                        if (creatorFollowsIncrement > 0) { // Si era primera compra
                             newHolderCount++;
                             holderChange = 1; 
                             newFollowers++; 
-                            creatorFollowsIncrement = 1; // ¡El jugador sigue al creador en la primera compra!
                         }
                         const newLastHolderCountChange = (coinData.lastHolderCountChange || 0) + holderChange;
                         
-                        // Billetera del Jugador
                         const playerTradeHistory = walletDoc.exists() ? walletDoc.data().tradeHistory || [] : [];
                         const updatedTradeHistory = [...playerTradeHistory, { 
-                            type: 'buy', 
-                            price: newPrice, // Precio de impacto
-                            amountSsol: ssolToSpend, 
-                            amountToken: tradeResult.tokensOut, // Tokens recibidos
-                            timestamp: new Date()
+                            type: 'buy', price: newPrice, amountSsol: ssolToSpend, amountToken: tradeResult.tokensOut, timestamp: new Date()
                         }].slice(-50); 
 
-                        // 4. Ejecutar Transacción
+                        // 4. Ejecutar ESCRITURAS
                         
                         // Actualizar Jugador
                         transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance - ssolToSpend });
@@ -2147,30 +2167,30 @@
                         transaction.set(walletRef, { 
                             amount: currentTokens + tradeResult.tokensOut, 
                             tradeHistory: updatedTradeHistory,
-                            lastAcquired: serverTimestamp() // Actualizar para ordenar portafolio
+                            lastAcquired: serverTimestamp() 
                         }, { merge: true });
                         
-                        // Incrementar seguidores del creador (si es primera compra)
-                        if (creatorFollowsIncrement > 0) {
-                            const creatorRef = doc(playersRef, coinData.creatorId);
-                            const creatorDoc = await transaction.get(creatorRef);
-                            if (creatorDoc.exists()) {
-                                transaction.update(creatorRef, { socialFollowers: increment(creatorFollowsIncrement) });
-                            }
+                        // Incrementar seguidores del creador (si era primera compra y existe)
+                        if (creatorFollowsIncrement > 0 && creatorDoc && creatorDoc.exists()) {
+                            transaction.update(creatorRef, { socialFollowers: increment(creatorFollowsIncrement) });
                         }
-                        // Incrementar seguidores del creador (si el bot siguió)
+                        
+                        // CORRECCIÓN TRANSACCIÓN: Incrementar seguidores del creador (si el bot siguió)
+                        // Esta lectura se movió a proactiveBotLoop, pero la dejamos aquí por si acaso
+                        // y la envolvemos en una comprobación
                         if (botUpdates.creatorFollowsIncrement > 0) {
-                            const creatorRef = doc(playersRef, coinData.creatorId);
-                            const creatorDoc = await transaction.get(creatorRef);
-                            if (creatorDoc.exists()) {
-                                transaction.update(creatorRef, { socialFollowers: increment(botUpdates.creatorFollowsIncrement) });
+                            const botCreatorRef = doc(playersRef, coinData.creatorId);
+                            // Leemos aquí DENTRO de la transacción porque botUpdates es calculado ahora
+                            const botCreatorDoc = await transaction.get(botCreatorRef); 
+                            if (botCreatorDoc.exists()) {
+                                transaction.update(botCreatorRef, { socialFollowers: increment(botUpdates.creatorFollowsIncrement) });
                             }
                         }
-                        delete botUpdates.creatorFollowsIncrement;
+                        delete botUpdates.creatorFollowsIncrement; // Eliminar para no afectar la escritura final
                         
                         // Actualizar Moneda
                         transaction.update(coinRef, {
-                             ...botUpdates, 
+                             ...botUpdates, // Aplicar updates del bot
                             sSolPool: tradeResult.newSsolPool, 
                             tokenPool: tradeResult.newTokenPool,
                             currentPrice: newPrice, 
@@ -2185,6 +2205,7 @@
                             allTimeLow: newAllTimeLow,
                             followers: newFollowers
                         });
+                        // --- FIN ESCRITURAS ---
                     });
                     
                     showMessage(`¡Compraste ${formatNumber(tradeResult.tokensOut)} ${allCoinsCache.get(selectedCoinId).symbol}!`);
@@ -2199,40 +2220,45 @@
             // Formulario de Venta
             sellFormEl.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                // Usar la función de parseo
-                const tokensToSell = parseDecimalInput(sellAmountEl.value);
+                const tokensToSellInput = parseDecimalInput(sellAmountEl.value);
                 
-                if (!selectedCoinId || isNaN(tokensToSell) || tokensToSell <= 0) return showMessage("Ingresa un monto válido.");
+                if (!selectedCoinId || isNaN(tokensToSellInput) || tokensToSellInput <= 0) return showMessage("Ingresa un monto válido.");
 
+                let ssolReceived = 0; // Para el mensaje de éxito
                 try {
-                    let ssolReceived = 0; // Para el mensaje de éxito
-                    
                     await runTransaction(db, async (transaction) => {
                         const playerRef = doc(playersRef, currentUserId);
                         const coinRef = doc(roomRef, selectedCoinId);
                         const walletRef = doc(playersRef, currentUserId, 'wallet', selectedCoinId);
+                        // CORRECCIÓN TRANSACCIÓN: Referencia al creador (para fees del bot)
+                        let botCreatorRef = null;
+                        let botCreatorDoc = null; 
 
+                        // --- INICIO LECTURAS ---
                         const [playerDoc, coinDoc, walletDoc] = await Promise.all([
-                            transaction.get(playerRef), transaction.get(coinRef), transaction.get(walletRef)
+                            transaction.get(playerRef), 
+                            transaction.get(coinRef), 
+                            transaction.get(walletRef)
                         ]);
 
                         if (!playerDoc.exists() || !coinDoc.exists()) throw new Error("Datos no encontrados.");
                         
                         const walletData = walletDoc.exists() ? walletDoc.data() : { amount: 0 };
-                        // Validar con tolerancia
-                        if (!walletDoc.exists() || walletData.amount < (tokensToSell - 0.000001)) {
+                        if (!walletDoc.exists() || walletData.amount < (tokensToSellInput - 0.000001)) {
                             throw new Error(`No tienes suficientes tokens. Tienes: ${formatNumber(walletData.amount)}`);
                         }
                         
-                        // Usar la cantidad exacta de la billetera si se pasa por poco (ej: 100% con redondeo)
-                        const finalTokensToSell = Math.min(tokensToSell, walletData.amount);
-
+                        const finalTokensToSell = Math.min(tokensToSellInput, walletData.amount);
                         let playerData = playerDoc.data();
                         let coinData = coinDoc.data();
 
-                        // 1. Simular trade de bot (reactivo)
+                        // 1. Simular trade de bot (reactivo) y leer creador si es necesario
                         const botUpdates = simulateBotTrade(coinData, 'reactive_sell');
-                        coinData = { ...coinData, ...botUpdates };
+                        if (botUpdates.creatorFollowsIncrement > 0) {
+                            botCreatorRef = doc(playersRef, coinData.creatorId);
+                            botCreatorDoc = await transaction.get(botCreatorRef);
+                        }
+                        coinData = { ...coinData, ...botUpdates }; // Aplicar updates después de la lectura
                         
                         // 2. Calcular el impacto de PRECIO del JUGADOR
                         const tradeResult = calculateSellImpact(finalTokensToSell, coinData.sSolPool, coinData.tokenPool);
@@ -2240,9 +2266,7 @@
                         ssolReceived = tradeResult.ssolOut; // Guardar para el mensaje
                         if (ssolReceived <= 0) throw new Error("Liquidez demasiado baja para vender.");
                         
-                        // 3. Preparar actualizaciones
-                        
-                        // Historiales
+                        // 3. Preparar actualizaciones (no escribe aún)
                         const newPrice = tradeResult.newPrice;
                         const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice);
                         const newAllTimeLow = Math.min(coinData.allTimeLow || 999999, newPrice); 
@@ -2252,7 +2276,6 @@
                         const newVolume = coinData.volume + tradeResult.ssolTraded;
                         const newCreatorFeesToken = (coinData.creatorFeesToken || 0) + tradeResult.feesCollectedToken;
 
-                        // Holders
                         let newHolderCount = coinData.holderCount;
                         let holderChange = 0;
                         const currentTokens = walletData.amount;
@@ -2263,37 +2286,28 @@
                         }
                         const newLastHolderCountChange = (coinData.lastHolderCountChange || 0) + holderChange;
 
-                        // Billetera del Jugador
                         const playerTradeHistory = walletData.tradeHistory || [];
                         const updatedTradeHistory = [...playerTradeHistory, { 
-                            type: 'sell', 
-                            price: newPrice, // Precio de impacto
-                            amountSsol: ssolReceived, // sSOL recibido
-                            amountToken: finalTokensToSell,
-                            timestamp: new Date()
+                            type: 'sell', price: newPrice, amountSsol: ssolReceived, amountToken: finalTokensToSell, timestamp: new Date()
                         }].slice(-50);
                         
-                        // 4. Ejecutar Transacción
+                        // 4. Ejecutar ESCRITURAS
                         
-                        // Actualizar Jugador (Sumar el sSOL recibido)
+                        // Actualizar Jugador
                         transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance + ssolReceived });
                         
                         // Actualizar Billetera
                         transaction.set(walletRef, { 
                             amount: newAmountInWallet, 
                             tradeHistory: updatedTradeHistory,
-                            lastAcquired: serverTimestamp() // Actualizar para ordenar portafolio
+                            lastAcquired: serverTimestamp() 
                         }, { merge: true });
                         
-                        // Incrementar seguidores del creador (si el bot siguió)
-                        if (botUpdates.creatorFollowsIncrement > 0) {
-                            const creatorRef = doc(playersRef, coinData.creatorId);
-                            const creatorDoc = await transaction.get(creatorRef);
-                            if (creatorDoc.exists()) {
-                                transaction.update(creatorRef, { socialFollowers: increment(botUpdates.creatorFollowsIncrement) });
-                            }
+                        // Incrementar seguidores del creador (si el bot siguió y existe)
+                        if (botUpdates.creatorFollowsIncrement > 0 && botCreatorDoc && botCreatorDoc.exists()) {
+                            transaction.update(botCreatorRef, { socialFollowers: increment(botUpdates.creatorFollowsIncrement) });
                         }
-                        delete botUpdates.creatorFollowsIncrement;
+                        delete botUpdates.creatorFollowsIncrement; // No escribirlo en la moneda
                         
                         // Actualizar Moneda
                         transaction.update(coinRef, {
@@ -2311,9 +2325,10 @@
                             allTimeHigh: newAllTimeHigh, 
                             allTimeLow: newAllTimeLow
                         });
+                         // --- FIN ESCRITURAS ---
                     });
                     
-                    showMessage(`¡Vendiste ${formatNumber(tokensToSell)} ${allCoinsCache.get(selectedCoinId).symbol} por ${formatNumber(ssolReceived)} sSOL!`);
+                    showMessage(`¡Vendiste ${formatNumber(tokensToSellInput)} ${allCoinsCache.get(selectedCoinId).symbol} por ${formatNumber(ssolReceived)} sSOL!`);
                     sellAmountEl.value = '';
 
                 } catch (error) {
@@ -2347,13 +2362,19 @@
                     await runTransaction(db, async (transaction) => {
                         const senderRef = doc(playersRef, currentUserId);
                         const receiverRef = doc(playersRef, targetPlayerId);
-                        const [senderDoc, receiverDoc] = await Promise.all([ transaction.get(senderRef), transaction.get(receiverRef) ]);
+                        // CORRECCIÓN TRANSACCIÓN: Leer ANTES
+                        const [senderDoc, receiverDoc] = await Promise.all([ 
+                            transaction.get(senderRef), 
+                            transaction.get(receiverRef) 
+                        ]);
                         if (!senderDoc.exists() || !receiverDoc.exists()) throw new Error("Datos no encontrados.");
                         const senderData = senderDoc.data();
                         if (senderData.sSOL_balance < amountToSend) throw new Error("sSOL insuficiente.");
                         
+                        // --- INICIO ESCRITURAS ---
                         transaction.update(senderRef, { sSOL_balance: increment(-amountToSend) });
                         transaction.update(receiverRef, { sSOL_balance: increment(amountToSend) });
+                         // --- FIN ESCRITURAS ---
                     });
                     
                     showMessage(`¡Enviaste ${formatNumber(amountToSend)} sSOL a ${allPlayersCache.get(targetPlayerId)?.username || '...'}!`);
@@ -2416,11 +2437,15 @@
                         const coinRef = doc(roomRef, coinId);
                         const playerRef = doc(playersRef, currentUserId);
                         const walletRef = doc(playersRef, currentUserId, 'wallet', coinId);
+                        // CORRECCIÓN TRANSACCIÓN: Leer ANTES
                         const [coinDoc, playerDoc, walletDoc] = await Promise.all([
-                            transaction.get(coinRef), transaction.get(playerRef), transaction.get(walletRef)
+                            transaction.get(coinRef), 
+                            transaction.get(playerRef), 
+                            transaction.get(walletRef)
                         ]);
                         if (!coinDoc.exists() || !playerDoc.exists()) throw new Error("Datos no encontrados.");
                         
+                        // --- INICIO ESCRITURAS ---
                         const walletData = walletDoc.exists() ? walletDoc.data() : { amount: 0, tradeHistory: [] };
                         
                         transaction.update(coinRef, { creatorFeesSsol: 0, creatorFeesToken: 0 });
@@ -2429,6 +2454,7 @@
                             amount: (walletData.amount || 0) + tokensToClaim,
                             lastAcquired: serverTimestamp() // Actualizar para ordenar
                         }, { merge: true });
+                        // --- FIN ESCRITURAS ---
                     });
                     showMessage("¡Comisiones reclamadas!");
                     btn.textContent = "Reclamado";
@@ -2438,6 +2464,7 @@
                 }
             }
             
+            // toggleLive no necesita transacción porque solo escribe en un documento
             async function toggleLive(coinId, btn) {
                 const coin = allCoinsCache.get(coinId);
                 const newState = !coin.isLive;
@@ -2488,16 +2515,23 @@
                 
                 try {
                     await runTransaction(db, async (transaction) => {
-                        const playerRef = doc(playersRef, currentUserId); const coinRef = doc(roomRef, selectedCoinId);
-                        const [playerDoc, coinDoc] = await Promise.all([ transaction.get(playerRef), transaction.get(coinRef) ]);
+                        const playerRef = doc(playersRef, currentUserId); 
+                        const coinRef = doc(roomRef, selectedCoinId);
+                         // CORRECCIÓN TRANSACCIÓN: Leer ANTES
+                        const [playerDoc, coinDoc] = await Promise.all([ 
+                            transaction.get(playerRef), 
+                            transaction.get(coinRef) 
+                        ]);
                         if (!playerDoc.exists() || !coinDoc.exists()) throw new Error("Datos no encontrados.");
                         if (playerDoc.data().sSOL_balance < boostCost) throw new Error("sSOL insuficiente.");
                         
+                        // --- INICIO ESCRITURAS ---
                         transaction.update(playerRef, { sSOL_balance: increment(-boostCost) });
                         transaction.update(coinRef, { 
                             liveViewers: increment(viewerBonus),
                             followers: increment(followerBonus)
                         });
+                         // --- FIN ESCRITURAS ---
                     });
                     showMessage(`¡Boost (${level}) aplicado!`);
                 } catch (e) { showMessage(e.message); }
@@ -2516,10 +2550,12 @@
                     try {
                         await runTransaction(db, async (transaction) => {
                             const playerRef = doc(playersRef, currentUserId);
+                            // CORRECCIÓN TRANSACCIÓN: Leer ANTES
                             const playerDoc = await transaction.get(playerRef);
                             if (!playerDoc.exists()) throw new Error("No se encontró al jugador.");
                             if (playerDoc.data().sSOL_balance < cost) throw new Error("sSOL insuficiente.");
                             
+                            // --- INICIO ESCRITURAS ---
                             let updateField = `assets.${item}`; // Lujo por defecto
                             if (category === 'office') {
                                 updateField = `officeItems.${item}`; // Campo de Oficina
@@ -2529,6 +2565,7 @@
                                 sSOL_balance: increment(-cost),
                                 [updateField]: increment(1)
                             });
+                             // --- FIN ESCRITURAS ---
                         });
                         showMessage(`¡Felicidades! ¡Compraste un ${item}!`);
                     } catch (e) { showMessage(e.message); }
@@ -2536,6 +2573,7 @@
                 });
             });
 
+            // editSocialProfileForm no necesita transacción (solo escribe en un doc)
             editSocialProfileFormEl.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const username = socialUsernameInputEl.value.trim();
@@ -2553,31 +2591,31 @@
                 } catch (error) { showMessage("Error al actualizar perfil."); }
             });
 
+            // createSocialPostForm no necesita transacción (solo crea un doc)
             createSocialPostFormEl.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const postText = socialPostTextEl.value.trim();
                 if (!postText) return showMessage("El post no puede estar vacío.");
 
                 try {
-                    //const postRef = doc(socialPostsRef); // Usar la colección global
                     const player = allPlayersCache.get(currentUserId);
-                    // Usar addDoc para Firestore v9+
                     await addDoc(socialPostsRef, {
                         userId: currentUserId,
-                        username: player.username, // Guardar denormalizado para el feed
-                        avatarUrl: player.avatarUrl, // Guardar denormalizado para el feed
+                        username: player.username, 
+                        avatarUrl: player.avatarUrl, 
                         text: postText,
                         createdAt: serverTimestamp(),
                         likes: 0,
-                        boosted: false // Nuevo campo
+                        boosted: false 
                     });
                     showMessage("Post publicado.");
                     hideModal(createSocialPostModalEl);
                     createSocialPostFormEl.reset();
-                    showPage('page-social'); // Ir al feed
+                    showPage('page-social'); 
                 } catch (error) { showMessage("Error al publicar post."); }
             });
             
+             // sendChatMessageForm no necesita transacción (solo crea un doc)
             sendChatMessageFormEl.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const text = chatMessageInputEl.value.trim();
@@ -2606,13 +2644,17 @@
                     await runTransaction(db, async (transaction) => {
                         const playerRef = doc(playersRef, currentUserId);
                         const postRef = doc(socialPostsRef, postId);
+                         // CORRECCIÓN TRANSACCIÓN: Leer ANTES
                         const playerDoc = await transaction.get(playerRef);
+                        // No necesitamos leer el post, solo verificar el balance
                         
                         if (!playerDoc.exists()) throw new Error("No se encontró al jugador.");
                         if (playerDoc.data().sSOL_balance < PROMO_POST_COST) throw new Error(`sSOL insuficiente. Necesitas ${PROMO_POST_COST}.`);
                         
+                        // --- INICIO ESCRITURAS ---
                         transaction.update(playerRef, { sSOL_balance: increment(-PROMO_POST_COST) });
                         transaction.update(postRef, { boosted: true });
+                         // --- FIN ESCRITURAS ---
                     });
                     showMessage("¡Post promocionado!");
                 } catch (e) {
@@ -2621,6 +2663,7 @@
                 }
             }
             
+            // showPlayerProfile no necesita transacción (solo lee)
             async function showPlayerProfile(playerId) {
                 if (playerId === currentUserId) {
                     showMyProfileBtn.click();
@@ -2635,10 +2678,8 @@
                 playerProfileAvatarEl.src = player.avatarUrl || 'https://via.placeholder.com/60/374151/FFFFFF?text=P';
                 playerProfileFollowersEl.textContent = formatNumber(player.socialFollowers || 0);
                 
-                // Actualizar botón de Seguir
                 updateFollowButton();
                 
-                // Cargar posts y monedas
                 playerProfilePostsEl.innerHTML = '<p class="text-gray-400 text-sm">Cargando posts...</p>';
                 playerProfileCreatedCoinsEl.innerHTML = '<p class="text-gray-400 text-sm">Cargando monedas...</p>';
                 showModal(playerProfileModalEl);
@@ -2707,28 +2748,31 @@
                         const myPlayerRef = doc(playersRef, currentUserId);
                         const targetPlayerRef = doc(playersRef, selectedProfilePlayerId);
                         
+                         // CORRECCIÓN TRANSACCIÓN: Leer ANTES
                         const myPlayerDoc = await transaction.get(myPlayerRef);
+                        // No necesitamos leer targetPlayerDoc aquí si solo usamos increment
+                        
                         if (!myPlayerDoc.exists()) throw new Error("No se encontró tu perfil.");
                         
+                        // --- INICIO ESCRITURAS ---
                         const currentFollows = myPlayerDoc.data().following || [];
                         
                         if (isFollowing) {
-                            // Dejar de seguir
                             const newFollows = currentFollows.filter(id => id !== selectedProfilePlayerId);
                             transaction.update(myPlayerRef, { following: newFollows });
                             transaction.update(targetPlayerRef, { socialFollowers: increment(-1) });
-                            myFollowsCache.delete(selectedProfilePlayerId);
+                            myFollowsCache.delete(selectedProfilePlayerId); // Actualizar caché local
                         } else {
-                            // Seguir
                             const newFollows = [...currentFollows, selectedProfilePlayerId];
                             transaction.update(myPlayerRef, { following: newFollows });
                             transaction.update(targetPlayerRef, { socialFollowers: increment(1) });
-                            myFollowsCache.add(selectedProfilePlayerId);
+                            myFollowsCache.add(selectedProfilePlayerId); // Actualizar caché local
                         }
+                         // --- FIN ESCRITURAS ---
                     });
                     
                     updateFollowButton();
-                    // Actualizar UI localmente (el listener lo hará eventualmente, pero esto es más rápido)
+                    // Actualizar UI localmente
                     const targetPlayer = allPlayersCache.get(selectedProfilePlayerId);
                     if (targetPlayer) {
                         const newFollowerCount = (targetPlayer.socialFollowers || 0) + (isFollowing ? -1 : 1);
@@ -2742,6 +2786,7 @@
                 followPlayerBtn.disabled = false;
             });
 
+             // launchSocialFiCoin no necesita transacción (solo lee)
             launchSocialFiCoinBtn.addEventListener('click', () => {
                 const player = allPlayersCache.get(currentUserId);
                 if (player && (player.socialFollowers || 0) >= 50) {
@@ -2756,6 +2801,7 @@
             });
             
             // --- Lógica de PnL ---
+             // showPnlModal no necesita transacción (solo lee)
             function showPnlModal(coinId) {
                 if (!coinId) return;
                 
@@ -2772,25 +2818,33 @@
                 let totalSsolInvested = 0;
                 let totalTokensBought = 0;
                 
+                // Calcular inversión basada en historial
                 tradeHistory.forEach(trade => {
                     if (trade.type === 'buy') {
                         totalSsolInvested += trade.amountSsol || 0;
                         totalTokensBought += trade.amountToken || 0;
                     } else if (trade.type === 'sell') {
-                        // Reducir la inversión proporcionalmente a la venta
+                        // Reducir la inversión proporcionalmente
                         if (totalTokensBought > 0) {
-                            const sellProportion = (trade.amountToken || 0) / totalTokensBought;
-                            totalSsolInvested -= totalSsolInvested * sellProportion;
-                            totalTokensBought -= trade.amountToken || 0;
+                             const sellProportion = (trade.amountToken || 0) / totalTokensBought;
+                             // Asegurarse de no reducir más de lo invertido
+                             totalSsolInvested = Math.max(0, totalSsolInvested - (totalSsolInvested * sellProportion));
+                             totalTokensBought = Math.max(0, totalTokensBought - (trade.amountToken || 0));
                         }
                     }
                 });
 
-                const avgBuyPrice = (totalTokensBought > 0) ? totalSsolInvested / totalTokensBought : 0;
+                // Asegurar que la inversión no sea negativa si se vendió todo
+                if (currentTokens < 0.000001) {
+                    totalSsolInvested = 0;
+                }
+
+                const avgBuyPrice = (totalTokensBought > 0 && totalSsolInvested > 0) ? totalSsolInvested / totalTokensBought : 0;
                 const currentValueInSsol = currentTokens * coinData.currentPrice;
                 
+                // Calcular PnL basado en el costo base restante
                 const pnlSsol = currentValueInSsol - totalSsolInvested;
-                const pnlPercent = (totalSsolInvested > 0) ? (pnlSsol / totalSsolInvested) * 100 : 0;
+                const pnlPercent = (totalSsolInvested > 0) ? (pnlSsol / totalSsolInvested) * 100 : (currentValueInSsol > 0 ? Infinity : 0); // Manejar caso de inversión cero
                 
                 // Actualizar UI del Modal
                 document.getElementById('pnl-card-coin-symbol').textContent = coinData.symbol;
@@ -2799,7 +2853,7 @@
                 const pnlSsolEl = document.getElementById('pnl-card-ssol');
                 const cardContentEl = document.getElementById('pnl-card-content');
                 
-                pnlPercentEl.textContent = `${pnlPercent >= 0 ? '+' : ''}${formatNumber(pnlPercent)}%`;
+                pnlPercentEl.textContent = `${pnlPercent >= 0 ? '+' : ''}${isFinite(pnlPercent) ? formatNumber(pnlPercent) : '∞'}%`;
                 pnlSsolEl.textContent = `${pnlSsol >= 0 ? '+' : ''}${formatNumber(pnlSsol)} sSOL`;
                 
                 if (pnlSsol >= 0) {
@@ -2843,7 +2897,7 @@
             const messageModalEl = document.getElementById('message-modal');
             const messageTextEl = document.getElementById('message-text');
             if (messageTextEl && messageModalEl) {
-                messageTextEl.textContent = "Error fatal al iniciar. Revisa la consola.";
+                messageTextEl.textContent = "Error fatal al iniciar: " + err.message + ". Revisa la consola.";
                 messageModalEl.classList.remove('hidden');
             }
         });
