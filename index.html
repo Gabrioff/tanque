@@ -19,6 +19,20 @@
                     colors: {
                         'solana-green': '#14F195',
                         'solana-purple': '#9945FF',
+                    },
+                    keyframes: {
+                        livePulse: {
+                            '0%, 100%': { opacity: 1, boxShadow: '0 0 5px #F11414' },
+                            '50%': { opacity: 0.6, boxShadow: '0 0 15px 5px #F11414' },
+                        },
+                        liveScreen: {
+                            '0%, 100%': { backgroundColor: 'rgba(239, 68, 68, 0.2)' }, /* red-500/20 */
+                            '50%': { backgroundColor: 'rgba(34, 197, 94, 0.2)' }, /* green-600/20 */
+                        }
+                    },
+                    animation: {
+                        livePulse: 'livePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        liveScreen: 'liveScreen 1.5s ease-in-out infinite',
                     }
                 }
             }
@@ -80,12 +94,37 @@
         <!-- Columna Izquierda: Controles y Portafolio -->
         <aside class="w-full lg:w-1/3 flex flex-col gap-4">
             
-            <!-- Botón para Crear Moneda -->
-            <div class="glassmorphism rounded-lg shadow-xl p-4">
-                 <button id="show-create-modal-btn" class="w-full bg-solana-purple hover:bg-opacity-80 text-white font-bold py-3 px-4 rounded-md transition duration-200 text-lg">
-                    ✨ Lanzar Nueva Memecoin
+            <!-- Botones de Acción -->
+            <div class="glassmorphism rounded-lg shadow-xl p-4 grid grid-cols-2 gap-2">
+                 <button id="show-create-modal-btn" class="w-full bg-solana-purple hover:bg-opacity-80 text-white font-bold py-3 px-4 rounded-md transition duration-200 text-sm">
+                    ✨ Lanzar Moneda
+                </button>
+                <button id="show-creator-dashboard-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-200 text-sm">
+                    💼 Panel de Creador
                 </button>
             </div>
+            
+            <!-- Tienda de Lujo -->
+            <div class="glassmorphism rounded-lg shadow-xl p-4">
+                <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Tienda de Lujo</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="buy-lambo-btn" data-item="lambo" data-cost="5" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
+                        Comprar Lambo <br>(5 sSOL)
+                    </button>
+                    <button id="buy-mansion-btn" data-item="mansion" data-cost="20" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
+                        Comprar Mansión <br>(20 sSOL)
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Mis Activos (Lujo) -->
+            <div class="glassmorphism rounded-lg shadow-xl p-4">
+                <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Mis Activos</h2>
+                <div id="my-assets-list" class="flex flex-wrap gap-2">
+                    <p class="text-gray-400 text-sm">Aún no tienes activos de lujo.</p>
+                </div>
+            </div>
+
 
             <!-- Mi Portafolio -->
             <div class="glassmorphism rounded-lg shadow-xl p-4 flex-grow flex flex-col">
@@ -174,7 +213,10 @@
         <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-3xl w-full text-center transform scale-95 overflow-y-auto max-h-full">
             
             <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
-                 <h2 id="modal-coin-name" class="text-2xl font-bold text-solana-green"></h2>
+                 <div class="flex items-center gap-2">
+                     <h2 id="modal-coin-name" class="text-2xl font-bold text-solana-green"></h2>
+                     <span id="modal-live-badge" class="hidden animate-livePulse text-xs font-bold bg-red-600 text-white px-2 py-0.5 rounded-md">LIVE</span>
+                 </div>
                 <button id="close-chart-modal-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
 
@@ -184,6 +226,11 @@
             <div class="relative h-48 md:h-72 mb-4">
                 <canvas id="coin-chart-modal"></canvas>
             </div>
+            
+            <!-- Botón para ver "Live" -->
+            <button id="view-live-btn" class="hidden w-full mb-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                Ver Directo
+            </button>
 
             <!-- Formularios de Compra/Venta -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -200,10 +247,69 @@
                 <form id="sell-form-modal" class="space-y-2 glassmorphism p-4 rounded-lg">
                     <label for="sell-amount-token-modal" class="block text-sm font-medium text-gray-300">Vender (Tokens) - Fee 0.3%</label>
                     <input type="number" id="sell-amount-token-modal" step="1" min="1" placeholder="1000" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
+                    <!-- Botones de Venta Rápida -->
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                        <button type="button" class="sell-percent-btn bg-gray-700 hover:bg-gray-600 py-1 rounded" data-percent="0.10">10%</button>
+                        <button type="button" class="sell-percent-btn bg-gray-700 hover:bg-gray-600 py-1 rounded" data-percent="0.50">50%</button>
+                        <button type="button" class="sell-percent-btn bg-gray-700 hover:bg-gray-600 py-1 rounded" data-percent="1.00">100%</button>
+                    </div>
                     <button type="submit" class="w-full bg-red-600 hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded-md transition duration-200">
                         Vender
                     </button>
                 </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para Panel de Creador -->
+    <div id="creator-dashboard-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
+        <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-4xl w-full text-center transform scale-95 overflow-y-auto max-h-full">
+            <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
+                <h2 class="text-xl font-semibold">Panel de Creador</h2>
+                <button id="close-creator-dashboard-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div id="creator-coins-list" class="space-y-4 text-left">
+                <p class="text-gray-400 text-center">No has creado ninguna moneda.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para Enviar sSOL (P2P) -->
+    <div id="send-ssol-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
+        <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-md w-full text-center transform scale-95">
+            <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
+                <h2 class="text-xl font-semibold">Enviar sSOL</h2>
+                <button id="close-send-ssol-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <form id="send-ssol-form" class="space-y-3 text-left">
+                <p class="text-sm">Enviar a: <strong id="send-ssol-target-name" class="font-mono text-solana-green">...</strong></p>
+                <div>
+                    <label for="send-ssol-amount" class="block text-sm font-medium text-gray-300">Monto (sSOL)</label>
+                    <input type="number" id="send-ssol-amount" step="0.01" min="0.01" required placeholder="0.1" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-solana-purple">
+                </div>
+                <button type="submit" class="w-full bg-solana-purple hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                    Confirmar Envío
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal para "Live Stream" -->
+    <div id="live-stream-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden opacity-0 visibility-hidden p-4">
+        <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-2xl w-full text-center transform scale-95">
+            <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
+                <h2 id="live-coin-name" class="text-xl font-semibold text-red-500 animate-pulse">LIVE: ...</h2>
+                <button id="close-live-stream-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <!-- Pantalla simulada -->
+            <div class="w-full h-64 bg-black rounded-lg mb-4 animate-liveScreen border-2 border-gray-700 flex items-center justify-center">
+                <span class="text-3xl font-bold text-gray-500">SIMULACIÓN DE LIVE</span>
+            </div>
+            <div class="flex justify-between items-center mb-3">
+                <div class="text-lg">Espectadores: <span id="live-viewers" class="font-bold text-solana-green">...</span></div>
+                <button id="boost-live-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                    Pagar Boost (0.1 sSOL)
+                </button>
             </div>
         </div>
     </div>
@@ -216,7 +322,6 @@
         import { 
             getAuth, 
             signInAnonymously, 
-            signInWithCustomToken, // Todavía se importa, pero no se usará
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
@@ -231,17 +336,16 @@
             query,
             updateDoc,
             orderBy,
-            limit
+            limit,
+            increment,
+            writeBatch
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- INICIO: ENVOLTORIO MAIN ASYNC ---
         async function main() {
         
             // --- CONFIGURACIÓN DE FIREBASE (TU PROYECTO) ---
-            
-            // ¡Importante! Usa tu ID de proyecto aquí para que las rutas de la base de datos coincidan.
             const appId = 'speed-of-glory'; 
-
             const firebaseConfig = {
               apiKey: "AIzaSyAKOG8qGf3lwZpZrqyMeUSuUHRpltBExHg",
               authDomain: "speed-of-glory.firebaseapp.com",
@@ -272,6 +376,25 @@
             const closeChartModalBtn = document.getElementById('close-chart-modal-btn');
             const modalCoinNameEl = document.getElementById('modal-coin-name');
             const modalCoinPriceEl = document.getElementById('modal-coin-price');
+            const modalLiveBadgeEl = document.getElementById('modal-live-badge');
+            const viewLiveBtnEl = document.getElementById('view-live-btn');
+            
+            const creatorDashboardModalEl = document.getElementById('creator-dashboard-modal');
+            const showCreatorDashboardBtn = document.getElementById('show-creator-dashboard-btn');
+            const closeCreatorDashboardBtn = document.getElementById('close-creator-dashboard-btn');
+            const creatorCoinsListEl = document.getElementById('creator-coins-list');
+            
+            const sendSsolModalEl = document.getElementById('send-ssol-modal');
+            const closeSendSsolBtn = document.getElementById('close-send-ssol-btn');
+            const sendSsolTargetNameEl = document.getElementById('send-ssol-target-name');
+            const sendSsolFormEl = document.getElementById('send-ssol-form');
+            const sendSsolAmountEl = document.getElementById('send-ssol-amount');
+            
+            const liveStreamModalEl = document.getElementById('live-stream-modal');
+            const closeLiveStreamBtn = document.getElementById('close-live-stream-btn');
+            const liveCoinNameEl = document.getElementById('live-coin-name');
+            const liveViewersEl = document.getElementById('live-viewers');
+            const boostLiveBtnEl = document.getElementById('boost-live-btn');
             
             // --- FUNCIONES DE MODAL ---
             function showModal(modalEl) {
@@ -300,30 +423,40 @@
             closeCreateModalBtn.addEventListener('click', () => hideModal(createCoinModalEl));
             closeChartModalBtn.addEventListener('click', () => {
                 hideModal(chartModalEl);
-                selectedCoinId = null; // Deseleccionar al cerrar
-                // Resetear la lista para quitar el highlight
+                selectedCoinId = null; 
                 const coinElements = memecoinListEl.querySelectorAll('button');
                 coinElements.forEach(child => {
                     child.classList.remove('bg-solana-purple/50');
                     child.classList.add('bg-gray-800');
                 });
             });
+            showCreatorDashboardBtn.addEventListener('click', () => showCreatorDashboard());
+            closeCreatorDashboardBtn.addEventListener('click', () => hideModal(creatorDashboardModalEl));
+            closeSendSsolBtn.addEventListener('click', () => hideModal(sendSsolModalEl));
+            closeLiveStreamBtn.addEventListener('click', () => hideModal(liveStreamModalEl));
+            viewLiveBtnEl.addEventListener('click', () => showLiveStream());
+            boostLiveBtnEl.addEventListener('click', () => boostLiveStream());
+
 
             // --- VARIABLES GLOBALES DEL JUEGO ---
             let currentUserId = null;
             let selectedCoinId = null;
+            let targetPlayerId = null; // Para P2P
             let memecoinChart = null;
-            let allCoinsCache = new Map(); // Cache para datos de monedas
-            let myPortfolioCache = new Map(); // Cache para el portafolio
+            let allCoinsCache = new Map(); 
+            let myPortfolioCache = new Map(); 
+            let myAssetsCache = new Map(); // Para items de lujo
             
             // --- COMISIONES ---
             const LP_FEE = 0.0025; // 0.25% para el pool
             const CREATOR_FEE = 0.0005; // 0.05% para el creador
             
-            // Referencia a la sala de juego global (pública)
+            // Referencias de Firestore
             const roomRef = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'data');
             const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'players');
             const tradesRef = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'trades');
+            const luxuryStoreRef = doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'store', 'luxury');
+
 
             // --- REFERENCIAS AL DOM (JUEGO) ---
             const ssolBalanceEl = document.getElementById('ssol-balance');
@@ -332,6 +465,7 @@
             const portfolioListEl = document.getElementById('portfolio-list');
             const topTradesListEl = document.getElementById('top-trades-list'); 
             const memecoinListEl = document.getElementById('memecoin-list');
+            const myAssetsListEl = document.getElementById('my-assets-list');
 
             // Formularios (dentro de modales)
             const createCoinFormEl = document.getElementById('create-coin-form');
@@ -379,7 +513,6 @@
                         await joinGame(user.uid);
                     } else {
                         try {
-                            // Iniciar sesión anónimamente por defecto
                             await signInAnonymously(auth);
                         } catch (error) {
                             console.error("Error de autenticación:", error);
@@ -396,8 +529,9 @@
                 if (!playerDoc.exists()) {
                     await setDoc(playerRef, {
                         userId: userId,
-                        sSOL_balance: 2, // Balance inicial de 2 sSOL
-                        joinedAt: serverTimestamp()
+                        sSOL_balance: 2, 
+                        joinedAt: serverTimestamp(),
+                        assets: {} // Inicializar activos de lujo
                     });
                 }
                 
@@ -416,6 +550,9 @@
                     if (doc.exists()) {
                         const data = doc.data();
                         ssolBalanceEl.textContent = `${formatNumber(data.sSOL_balance)} sSOL`;
+                        // Actualizar mis activos de lujo
+                        myAssetsCache = new Map(Object.entries(data.assets || {}));
+                        updateMyAssetsUI();
                     }
                 });
             }
@@ -430,14 +567,23 @@
                     snapshot.forEach(doc => {
                         const player = doc.data();
                         const isMe = player.userId === currentUserId;
-                        const playerEl = document.createElement('div');
-                        playerEl.className = `flex justify-between items-center p-2 rounded ${isMe ? 'bg-solana-purple/30' : 'bg-gray-800'}`;
+                        const playerEl = document.createElement(isMe ? 'div' : 'button'); // Es un botón si no soy yo
+                        playerEl.className = `flex w-full justify-between items-center p-2 rounded ${isMe ? 'bg-solana-purple/30' : 'bg-gray-800 hover:bg-gray-700 transition'}`;
                         playerEl.innerHTML = `
                             <span class="font-mono text-xs truncate ${isMe ? 'text-solana-green' : ''}" title="${player.userId}">
                                 ${isMe ? 'Tu (...' + player.userId.slice(-6) + ')' : '...' + player.userId.slice(-6)}
                             </span>
                             <span class="text-sm font-semibold">${formatNumber(player.sSOL_balance)} sSOL</span>
                         `;
+                        
+                        if (!isMe) {
+                            playerEl.addEventListener('click', () => {
+                                targetPlayerId = player.userId;
+                                sendSsolTargetNameEl.textContent = `...${player.userId.slice(-6)}`;
+                                showModal(sendSsolModalEl);
+                            });
+                        }
+                        
                         playersListEl.appendChild(playerEl);
                     });
                 });
@@ -456,10 +602,10 @@
                         const isBuy = trade.type === 'buy';
                         const color = isBuy ? 'text-green-500' : 'text-red-500';
                         const tradeEl = document.createElement('div');
-                        tradeEl.className = 'flex justify-between items-center text-xs bg-gray-800 p-2 rounded';
+                        tradeEl.className = `flex justify-between items-center text-xs ${trade.isWash ? 'bg-gray-800/50' : 'bg-gray-800'} p-2 rounded`;
                         tradeEl.innerHTML = `
                             <div>
-                                <span class="font-bold ${color}">${isBuy ? 'COMPRA' : 'VENTA'}</span>
+                                <span class="font-bold ${color}">${isBuy ? 'COMPRA' : 'VENTA'} ${trade.isWash ? '(WASH)' : ''}</span>
                                 <span class="font-semibold text-white ml-1">${trade.coinSymbol}</span>
                             </div>
                             <div class="text-right font-mono">
@@ -485,7 +631,7 @@
 
                     snapshot.forEach(doc => {
                         const coin = doc.data();
-                        if (coin.amount < 0.01) return; // No mostrar saldos de polvo
+                        if (coin.amount < 0.01) return; 
                         
                         myPortfolioCache.set(doc.id, coin);
                         
@@ -516,7 +662,7 @@
                     
                     if (snapshot.empty) {
                         memecoinListEl.innerHTML = '<p class="text-gray-400">No hay monedas. ¡Lanza la primera!</p>';
-                        allCoinsCache.clear(); // Limpiar cache si no hay monedas
+                        allCoinsCache.clear(); 
                         return;
                     }
                     
@@ -528,9 +674,8 @@
                         newCache.set(doc.id, coinData);
                     });
                     
-                    allCoinsCache = newCache; // Actualizar cache
+                    allCoinsCache = newCache; 
 
-                    // Ordenar por Market Cap (más alto primero)
                     coins.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
 
                     coins.forEach(coin => {
@@ -550,13 +695,16 @@
                                         <span class="text-lg font-bold">${coin.name} (${coin.symbol})</span>
                                         <span class="text-xs text-gray-400 block" title="${coin.creatorId}">Creador: ...${coin.creatorId.slice(-6)}</span>
                                     </div>
+                                    ${coin.isLive ? `<span class="animate-livePulse text-xs font-bold bg-red-600 text-white px-2 py-0.5 rounded-md ml-2">LIVE</span>` : ''}
                                 </div>
                                 <div class="text-right">
                                     <span class="text-lg font-mono">${formatPrice(coin.currentPrice)}</span>
                                     <span class="text-sm font-semibold ${changeColor}">${changeIcon} ${formatNumber(priceChange * 100)}%</span>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs text-center">
+                            
+                            <!-- Stats Principales -->
+                            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-3 text-xs text-center">
                                 <div>
                                     <span class="text-gray-400 block">MC</span>
                                     <span class="font-semibold">${formatCurrency(coin.marketCap || 0)}</span>
@@ -573,7 +721,28 @@
                                     <span class="text-gray-400 block">Holders</span>
                                     <span class="font-semibold">${formatNumber(coin.holderCount || 0)}</span>
                                 </div>
+                                <div>
+                                    <span class="text-gray-400 block">Seguidores</span>
+                                    <span class="font-semibold">${formatNumber(coin.followers || 0)}</span>
+                                </div>
                             </div>
+                            
+                            <!-- Stats Secundarias (Nuevas) -->
+                            <div class="grid grid-cols-3 gap-2 mt-2 text-xs text-center pt-2 border-t border-gray-700/50">
+                                <div>
+                                    <span class="text-gray-400 block">Fondos Bots</span>
+                                    <span class="font-semibold">${formatNumber(coin.botTokenPool || 0)}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-400 block">Precio Máx.</span>
+                                    <span class="font-semibold text-green-400">${formatPrice(coin.allTimeHigh || 0)}</span>
+                                </div>
+                                 <div>
+                                    <span class="text-gray-400 block">Precio Mín.</span>
+                                    <span class="font-semibold text-red-400">${formatPrice(coin.allTimeLow || 0)}</span>
+                                </div>
+                            </div>
+
                             <div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-400">
                                 <span class="font-semibold text-gray-300">Comisiones Creador:</span> 
                                 <span>${formatNumber(coin.creatorFeesSsol || 0)} sSOL</span> | 
@@ -583,11 +752,13 @@
                         coinEl.addEventListener('click', () => selectCoin(coin.id));
                         memecoinListEl.appendChild(coinEl);
 
-                        // Si la moneda seleccionada se actualiza, actualiza el modal
                         if (coin.id === selectedCoinId) {
                             updateChart(coin);
                             updateSelectedCoinPrice(coin.currentPrice);
                             modalCoinNameEl.textContent = `${coin.name} (${coin.symbol})`;
+                            // Mostrar/ocultar botón de Live y badge
+                            modalLiveBadgeEl.classList.toggle('hidden', !coin.isLive);
+                            viewLiveBtnEl.classList.toggle('hidden', !coin.isLive);
                         }
                     });
                     
@@ -623,13 +794,33 @@
                 });
             }
             
+            function updateMyAssetsUI() {
+                myAssetsListEl.innerHTML = '';
+                if (myAssetsCache.size === 0) {
+                    myAssetsListEl.innerHTML = '<p class="text-gray-400 text-sm">Aún no tienes activos de lujo.</p>';
+                    return;
+                }
+                
+                myAssetsCache.forEach((count, item) => {
+                    const emoji = item === 'lambo' ? '🏎️' : '🏰';
+                    const name = item === 'lambo' ? 'Lambo' : 'Mansión';
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'bg-gray-800 p-2 rounded-lg text-center';
+                    itemEl.innerHTML = `
+                        <span class="text-2xl">${emoji}</span>
+                        <div class="text-sm font-semibold">${name} (x${count})</div>
+                    `;
+                    myAssetsListEl.appendChild(itemEl);
+                });
+            }
+            
             // --- LÓGICA DE GRÁFICA (CHART.JS) ---
 
             function initChart() {
                 const ctx = document.getElementById('coin-chart-modal').getContext('2d');
                 
                 memecoinChart = new Chart(ctx, {
-                    type: 'line', // Tipo principal: línea
+                    type: 'line', 
                     data: {
                         labels: [],
                         datasets: [
@@ -641,14 +832,14 @@
                                 pointRadius: 0,
                                 tension: 0.3,
                                 fill: false,
-                                yAxisID: 'yPrice', // Asignar al eje Y de precio
+                                yAxisID: 'yPrice', 
                             },
                             {
                                 label: 'Volumen',
                                 data: [],
-                                backgroundColor: 'rgba(153, 69, 255, 0.4)', // solana-purple con alpha
-                                type: 'bar', // Tipo de este dataset: barras
-                                yAxisID: 'yVolume', // Asignar al eje Y de volumen
+                                backgroundColor: 'rgba(153, 69, 255, 0.4)', 
+                                type: 'bar', 
+                                yAxisID: 'yVolume', 
                             }
                         ]
                     },
@@ -667,9 +858,9 @@
                             },
                             yVolume: {
                                 type: 'linear',
-                                position: 'right', // En el lado derecho
-                                ticks: { display: false }, // No mostrar etiquetas
-                                grid: { display: false }, // No mostrar rejilla
+                                position: 'right', 
+                                ticks: { display: false }, 
+                                grid: { display: false }, 
                                 beginAtZero: true
                             },
                             x: {
@@ -703,14 +894,14 @@
             function updateChart(coinData) {
                 if (!memecoinChart) return;
                 
-                const history = coinData.priceHistory.slice(-50); // Últimos 50 puntos
+                const history = coinData.priceHistory.slice(-50); 
                 const volumeHistory = (coinData.volumeHistory || []).slice(-50);
                 
                 memecoinChart.data.labels = history.map((_, i) => i + 1);
-                memecoinChart.data.datasets[0].data = history; // Dataset de Precio
-                memecoinChart.data.datasets[1].data = volumeHistory; // Dataset de Volumen
+                memecoinChart.data.datasets[0].data = history; 
+                memecoinChart.data.datasets[1].data = volumeHistory; 
                 
-                memecoinChart.update('none'); // 'none' para evitar animaciones parpadeantes
+                memecoinChart.update('none'); 
             }
 
             function updateSelectedCoinPrice(price) {
@@ -725,15 +916,15 @@
                 
                 if (!coinData) return;
                 
-                // Actualizar info del modal
                 modalCoinNameEl.textContent = `${coinData.name} (${coinData.symbol})`;
                 updateSelectedCoinPrice(coinData.currentPrice);
-                
-                // Actualizar gráfica y mostrar modal
                 updateChart(coinData);
                 showModal(chartModalEl);
                 
-                // Resaltar selección en la lista
+                // Mostrar/ocultar botón de Live y badge
+                modalLiveBadgeEl.classList.toggle('hidden', !coinData.isLive);
+                viewLiveBtnEl.classList.toggle('hidden', !coinData.isLive);
+                
                 Array.from(memecoinListEl.children).forEach(child => {
                     child.classList.toggle('bg-solana-purple/50', child.dataset.coinId === coinId);
                     child.classList.toggle('bg-gray-800', child.dataset.coinId !== coinId);
@@ -771,13 +962,11 @@
                             throw new Error(`Fondos insuficientes. Necesitas ${formatNumber(totalCost)} sSOL (0.01 de fee + ${formatNumber(initialSsol)} de liquidez).`);
                         }
                         
-                        // Cobrar al jugador
                         transaction.update(playerRef, {
                             sSOL_balance: currentBalance - totalCost
                         });
                         
-                        // Crear la moneda
-                        const newCoinRef = doc(roomRef); // Genera un ID automático
+                        const newCoinRef = doc(roomRef); 
                         const price = initialSsol / initialTokens;
                         
                         transaction.set(newCoinRef, {
@@ -790,7 +979,8 @@
                             currentPrice: price,
                             priceHistory: [price],
                             volumeHistory: [0], 
-                            allTimeHigh: price, // ATH Inicial
+                            allTimeHigh: price, 
+                            allTimeLow: price, 
                             createdAt: serverTimestamp(),
                             marketCap: initialSsol * 2, 
                             volume: 0,
@@ -799,19 +989,23 @@
                             creatorFeesSsol: 0, 
                             creatorFeesToken: 0, 
                             botSsolPool: 400, 
-                            botTokenPool: 0
+                            botTokenPool: 0,
+                            // Nuevas funciones
+                            isLive: false,
+                            liveViewers: 0,
+                            followers: 1,
+                            washTradeBudget: 0
                         });
 
-                        // Dar al creador sus tokens iniciales
                         const walletRef = doc(playersRef, currentUserId, 'wallet', newCoinRef.id);
                         transaction.set(walletRef, {
                             amount: initialTokens
                         });
                     });
                     
-                    hideModal(createCoinModalEl); // Ocultar modal al éxito
+                    hideModal(createCoinModalEl); 
                     showMessage(`¡Moneda ${name} (${symbol}) lanzada con éxito!`);
-                    createCoinFormEl.reset(); // Limpiar formulario
+                    createCoinFormEl.reset(); 
 
                 } catch (error) {
                     console.error("Error al lanzar moneda:", error);
@@ -821,15 +1015,13 @@
 
             // --- LÓGICA DE BOTS (REACTIVA Y PROACTIVA) ---
             
-            function simulateBotTrade(coinData, playerAction, forceBuyProbability = null) {
-                if (playerAction !== 'proactive' && Math.random() > 0.3) {
-                     return {};
-                }
-
+            function simulateBotTrade(coinData, playerAction, forceBuyProbability = null, isWash = false) {
+                
                 let { 
                     botSsolPool, botTokenPool, sSolPool, tokenPool, 
                     volume, priceHistory, volumeHistory, creatorId,
-                    creatorFeesSsol, creatorFeesToken, marketCap, allTimeHigh
+                    creatorFeesSsol, creatorFeesToken, marketCap, allTimeHigh, allTimeLow,
+                    followers
                 } = coinData;
 
                 if (creatorId === 'bot') return {};
@@ -839,7 +1031,8 @@
                     buyProbability = forceBuyProbability;
                 }
                 
-                const isBuy = Math.random() < buyProbability;
+                // Los bots de Wash Trading intentan alternar
+                const isBuy = isWash ? (sSolPool < tokenPool) : (Math.random() < buyProbability);
 
                 let ssolTraded = 0;
                 let ssolFee = 0;
@@ -852,15 +1045,15 @@
                 let finalTokenPool = tokenPool;
                 let newCreatorFeesSsol = creatorFeesSsol || 0;
                 let newCreatorFeesToken = creatorFeesToken || 0;
-                let tradeRef = null; // Para log de trade
+                let tradeRef = null; 
+                let newFollowers = followers || 0;
 
                 if (isBuy) { // BOT COMPRA
-                    // Monto variable
-                    const ssolToSpend = Math.pow(Math.random(), 2) * (botSsolPool * 0.1); // Sesgado a pequeño, máx 10%
+                    const ssolToSpend = isWash ? (coinData.washTradeBudget * 0.1) : (Math.pow(Math.random(), 2) * (botSsolPool * 0.1));
                     if (ssolToSpend < 0.01 || botSsolPool < ssolToSpend) return {};
                     
                     botSsolPool -= ssolToSpend;
-                    ssolTraded = ssolToSpend; // Volumen total de la operación
+                    ssolTraded = ssolToSpend; 
                     
                     const creatorFee = ssolToSpend * CREATOR_FEE;
                     const lpFee = ssolToSpend * LP_FEE;
@@ -875,13 +1068,14 @@
                     newCreatorFeesSsol += creatorFee;
                     
                     botTokenPool += tokensReceived;
+                    if (isWash) coinData.washTradeBudget -= ssolToSpend; // Reducir presupuesto si es wash
                     
-                    tradeRef = { type: 'buy', coinSymbol: coinData.symbol, amountSsol: ssolToSpend, amountToken: tokensReceived, price: coinData.currentPrice, timestamp: serverTimestamp() };
+                    tradeRef = { type: 'buy', coinSymbol: coinData.symbol, amountSsol: ssolToSpend, amountToken: tokensReceived, price: coinData.currentPrice, timestamp: serverTimestamp(), isWash: isWash };
+                    newFollowers++; // Nuevo seguidor en la primera compra
                     
                 } else { // BOT VENDE
                     const isRugpull = ((playerAction === 'sell' || playerAction === 'proactive') && Math.random() < 0.1);
-                    // Monto variable
-                    const sellPercentage = isRugpull ? 0.5 : (Math.pow(Math.random(), 2) * 0.1); // Sesgado a pequeño, máx 10%
+                    const sellPercentage = isWash ? 0.1 : (isRugpull ? 0.5 : (Math.pow(Math.random(), 2) * 0.1));
                     
                     const tokensToSell = botTokenPool * sellPercentage;
                     if (tokensToSell < 1) return {};
@@ -896,29 +1090,30 @@
                     const newTokenPool_k = tokenPool + tokensForTrade + lpFee;
                     finalSsolPool = k / newTokenPool_k;
                     ssolReceived = sSolPool - finalSsolPool;
-                    ssolTraded = ssolReceived; // Volumen total de la operación
+                    ssolTraded = ssolReceived; 
 
                     finalTokenPool = newTokenPool_k;
                     newCreatorFeesToken += creatorFee;
                     
                     botSsolPool += ssolReceived;
+                    if (isWash) coinData.washTradeBudget += ssolReceived; // Devolver al presupuesto si es wash
                     
-                    tradeRef = { type: 'sell', coinSymbol: coinData.symbol, amountSsol: ssolReceived, amountToken: tokensToSell, price: coinData.currentPrice, timestamp: serverTimestamp() };
+                    tradeRef = { type: 'sell', coinSymbol: coinData.symbol, amountSsol: ssolReceived, amountToken: tokensToSell, price: coinData.currentPrice, timestamp: serverTimestamp(), isWash: isWash };
 
-                    if (isRugpull) {
+                    if (isRugpull && !isWash) {
                         console.warn(`¡BOT RUGPULL SIMULADO! Vendió ${formatNumber(tokensToSell)} tokens.`);
                     }
                 }
 
                 const newPrice = finalSsolPool / finalTokenPool;
-                // Actualizar ATH
                 const newAllTimeHigh = Math.max(allTimeHigh || 0, newPrice);
+                const newAllTimeLow = Math.min(allTimeLow || 999999, newPrice); 
                 const newMarketCap = newPrice * (finalTokenPool + botTokenPool);
                 const newHistory = [...priceHistory, newPrice].slice(-50);
                 const newVolumeHistory = [...(volumeHistory || []), ssolTraded].slice(-50); 
                 const newVolume = volume + ssolTraded;
 
-                return {
+                const updates = {
                     sSolPool: finalSsolPool,
                     tokenPool: finalTokenPool,
                     botSsolPool: botSsolPool,
@@ -931,9 +1126,57 @@
                     creatorFeesSsol: newCreatorFeesSsol,
                     creatorFeesToken: newCreatorFeesToken,
                     tradeLog: tradeRef, 
-                    allTimeHigh: newAllTimeHigh // Devolver ATH
+                    allTimeHigh: newAllTimeHigh,
+                    allTimeLow: newAllTimeLow
                 };
+                
+                if (isBuy) updates.followers = newFollowers;
+                if (isWash) updates.washTradeBudget = coinData.washTradeBudget;
+                
+                return updates;
             }
+            
+            // Bucle para Bots de "Wash Trading" (Volumen)
+            async function washTradeBotLoop() {
+                if (allCoinsCache.size === 0) {
+                    setTimeout(washTradeBotLoop, 3000); // Reintentar
+                    return;
+                }
+
+                const batch = writeBatch(db);
+                let batchHasWrites = false;
+
+                for (const [coinId, coin] of allCoinsCache.entries()) {
+                    if (coin.washTradeBudget && coin.washTradeBudget > 0.01) {
+                        const coinRef = doc(roomRef, coinId);
+                        
+                        // Simular el trade
+                        const botUpdates = simulateBotTrade(coin, 'proactive', null, true); // true = isWash
+                        
+                        if (Object.keys(botUpdates).length > 0) {
+                            if (botUpdates.tradeLog) {
+                                const newTradeRef = doc(tradesRef);
+                                batch.set(newTradeRef, botUpdates.tradeLog);
+                                delete botUpdates.tradeLog; 
+                            }
+                            
+                            batch.update(coinRef, botUpdates);
+                            batchHasWrites = true;
+                        }
+                    }
+                }
+                
+                if (batchHasWrites) {
+                    try {
+                        await batch.commit();
+                    } catch (e) {
+                        console.warn("Fallo el batch de Wash Trade (conflicto normal):", e.message);
+                    }
+                }
+
+                setTimeout(washTradeBotLoop, 3000); // Cada 3 segundos
+            }
+
 
             async function proactiveBotLoop() {
                 if (allCoinsCache.size > 0) {
@@ -942,17 +1185,14 @@
                         
                         const allTimeHigh = coin.allTimeHigh || coin.priceHistory[0] || 0;
                         const currentPrice = coin.currentPrice;
-                        let buyProbability = 0.5; // Base neutral
-                        let tradeProbability = 0.0; // Base de no-comercio
+                        let buyProbability = 0.5; 
+                        let tradeProbability = 0.0; 
 
                         if (allTimeHigh > 0 && (currentPrice / allTimeHigh) < 0.2) {
-                            // LÓGICA DE TOKEN MUERTO
-                            // El precio ha caído más del 80%
-                            tradeProbability = 0.1; // 10% de probabilidad de que un bot lo "limpie"
-                            buyProbability = 0.05; // 95% de probabilidad de que sea una venta (liquidación)
-                            
+                            tradeProbability = 0.1; 
+                            buyProbability = 0.05; 
                         } else {
-                            // LÓGICA DE HYPE (TOKEN VIVO)
+                            // --- LÓGICA DE HYPE ---
                             const priceHistory = coin.priceHistory || [];
                             let priceChange = 0;
                             if (priceHistory.length > 1) {
@@ -966,21 +1206,19 @@
                             const volumeRatio = (coin.sSolPool > 0) ? (coin.volume || 0) / coin.sSolPool : 0;
                             const volumeScore = Math.max(0, Math.min(1, volumeRatio / 10));
                             const holderScore = Math.max(0, Math.min(1, (coin.lastHolderCountChange || 0) / 5));
+                            const followersScore = Math.max(0, Math.min(1, (coin.followers || 0) / 100)); // Hype por seguidores
+                            const liveScore = coin.isLive ? 1.0 : 0.0; // Hype por "Live"
+                            
+                            const totalHypeScore = (priceChangeScore + volumeScore + holderScore + followersScore + liveScore) / 5;
+                            tradeProbability = totalHypeScore * 0.5; 
 
-                            const totalHypeScore = (priceChangeScore + volumeScore + holderScore) / 3;
-                            tradeProbability = totalHypeScore * 0.5; // Prob. de comerciar (hasta 50%)
-
-                            // LÓGICA DE ASEGURAR GANANCIAS
                             if (priceChange > 0) {
-                                // FOMO (subiendo)
-                                buyProbability = 0.5 + (totalHypeScore * 0.4); // Rango 0.5 a 0.9 (sesgo de compra)
+                                buyProbability = 0.5 + (totalHypeScore * 0.4); 
                             } else {
-                                // Profit-Taking / Panic (bajando)
-                                buyProbability = 0.5 - ((1 - totalHypeScore) * 0.4); // Rango 0.1 a 0.5 (sesgo de venta)
+                                buyProbability = 0.5 - ((1 - totalHypeScore) * 0.4); 
                             }
                         }
                         
-                        // Decidir si comerciar
                         if (Math.random() < tradeProbability) {
                             
                             const coinRef = doc(roomRef, coinId);
@@ -990,7 +1228,7 @@
                                     if (!coinDoc.exists()) return;
                                     
                                     const coinData = coinDoc.data();
-                                    const botUpdates = simulateBotTrade(coinData, 'proactive', buyProbability); // Pasamos la prob. de compra
+                                    const botUpdates = simulateBotTrade(coinData, 'proactive', buyProbability); 
                                     
                                     if (Object.keys(botUpdates).length > 0) {
                                         if (botUpdates.tradeLog) {
@@ -1000,7 +1238,6 @@
                                         }
                                         botUpdates.lastHolderCountChange = 0; 
                                         
-                                        // Asegurarse de que el ATH se actualiza (ya se hace en simulateBotTrade)
                                         transaction.update(coinRef, botUpdates);
                                     }
                                 });
@@ -1049,12 +1286,10 @@
                             throw new Error("sSOL insuficiente.");
                         }
                         
-                        // 1. Simular bot reactivo
                         const botUpdates = simulateBotTrade(coinData, 'reactive_buy');
                         coinData = { ...coinData, ...botUpdates };
                         
-                        // 2. Calcular trade del jugador con comisiones
-                        const ssolTraded = ssolToSpend; // El volumen es el total
+                        const ssolTraded = ssolToSpend; 
                         const creatorFee = ssolToSpend * CREATOR_FEE;
                         const lpFee = ssolToSpend * LP_FEE;
                         const ssolForTrade = ssolToSpend - creatorFee - lpFee;
@@ -1066,26 +1301,26 @@
                         
                         const finalSsolPool = newSsolPool_k;
                         
-                        // 3. Calcular nuevos totales
                         const newPrice = finalSsolPool / newTokenPool;
-                        const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice); // Actualizar ATH
+                        const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice); 
+                        const newAllTimeLow = Math.min(coinData.allTimeLow || 999999, newPrice);
                         const newMarketCap = newPrice * (newTokenPool + coinData.botTokenPool);
                         const newHistory = [...coinData.priceHistory, newPrice].slice(-50);
                         const newVolumeHistory = [...(coinData.volumeHistory || []), ssolTraded].slice(-50);
                         const newVolume = coinData.volume + ssolTraded;
                         const newCreatorFeesSsol = (coinData.creatorFeesSsol || 0) + creatorFee;
 
-                        // 4. Lógica de Holders
                         let newHolderCount = coinData.holderCount;
                         let holderChange = 0;
+                        let newFollowers = coinData.followers || 0;
                         const currentTokens = walletDoc.exists() ? walletDoc.data().amount : 0;
                         if (currentTokens < 0.01) { 
                             newHolderCount++;
-                            holderChange = 1; // Para el hype del bot
+                            holderChange = 1; 
+                            newFollowers++; // Nuevo seguidor (jugador real)
                         }
                         const newLastHolderCountChange = (coinData.lastHolderCountChange || 0) + holderChange;
                         
-                        // 5. Actualizar documentos
                         transaction.update(playerRef, {
                             sSOL_balance: playerData.sSOL_balance - ssolToSpend
                         });
@@ -1094,16 +1329,14 @@
                             amount: currentTokens + tokensReceived
                         }, { merge: true });
                         
-                        // Loguear trade del bot (si hubo)
                         if (botUpdates.tradeLog) {
                             const newTradeRef = doc(tradesRef);
                             transaction.set(newTradeRef, botUpdates.tradeLog);
                             delete botUpdates.tradeLog;
                         }
                         
-                        // Loguear trade del jugador
                         const playerTradeRef = doc(tradesRef);
-                        transaction.set(playerTradeRef, { type: 'buy', coinSymbol: coinData.symbol, amountSsol: ssolToSpend, amountToken: tokensReceived, price: coinData.currentPrice, timestamp: serverTimestamp() });
+                        transaction.set(playerTradeRef, { type: 'buy', coinSymbol: coinData.symbol, amountSsol: ssolToSpend, amountToken: tokensReceived, price: coinData.currentPrice, timestamp: serverTimestamp(), isWash: false });
 
                         transaction.update(coinRef, {
                             ...botUpdates, 
@@ -1117,7 +1350,9 @@
                             holderCount: newHolderCount,
                             lastHolderCountChange: newLastHolderCountChange,
                             creatorFeesSsol: newCreatorFeesSsol,
-                            allTimeHigh: newAllTimeHigh // Guardar ATH
+                            allTimeHigh: newAllTimeHigh,
+                            allTimeLow: newAllTimeLow,
+                            followers: newFollowers
                         });
                     });
                     
@@ -1164,11 +1399,9 @@
                         let coinData = coinDoc.data();
                         const walletData = walletDoc.data();
 
-                        // 1. Simular bot reactivo
                         const botUpdates = simulateBotTrade(coinData, 'reactive_sell');
                         coinData = { ...coinData, ...botUpdates };
                         
-                        // 2. Calcular trade del jugador con comisiones
                         const creatorFee = tokensToSell * CREATOR_FEE;
                         const lpFee = tokensToSell * LP_FEE;
                         const tokensForTrade = tokensToSell - creatorFee - lpFee;
@@ -1179,33 +1412,31 @@
                         const ssolReceived = coinData.sSolPool - newSsolPool;
                         
                         const finalTokenPool = newTokenPool_k;
-                        const ssolTraded = ssolReceived; // El volumen es el sSOL recibido
+                        const ssolTraded = ssolReceived; 
 
                         if (ssolReceived < 0.00001) {
                             throw new Error("La liquidez es demasiado baja para esta venta.");
                         }
                         
-                        // 3. Calcular nuevos totales
                         const newPrice = newSsolPool / finalTokenPool; 
-                        const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice); // Actualizar ATH
+                        const newAllTimeHigh = Math.max(coinData.allTimeHigh || 0, newPrice);
+                        const newAllTimeLow = Math.min(coinData.allTimeLow || 999999, newPrice); 
                         const newMarketCap = newPrice * (finalTokenPool + coinData.botTokenPool);
                         const newHistory = [...coinData.priceHistory, newPrice].slice(-50);
                         const newVolumeHistory = [...(coinData.volumeHistory || []), ssolTraded].slice(-50);
                         const newVolume = coinData.volume + ssolTraded;
                         const newCreatorFeesToken = (coinData.creatorFeesToken || 0) + creatorFee;
 
-                        // 4. Lógica de Holders
                         let newHolderCount = coinData.holderCount;
                         let holderChange = 0;
                         const currentTokens = walletData.amount;
                         const newAmountInWallet = currentTokens - tokensToSell;
                         if (newAmountInWallet < 0.01 && currentTokens >= 0.01) { 
                             newHolderCount--;
-                            holderChange = -1; // Para el hype del bot
+                            holderChange = -1; 
                         }
                         const newLastHolderCountChange = (coinData.lastHolderCountChange || 0) + holderChange;
                         
-                        // 5. Actualizar documentos
                         transaction.update(playerRef, {
                             sSOL_balance: playerData.sSOL_balance + ssolReceived
                         });
@@ -1214,16 +1445,14 @@
                             amount: newAmountInWallet
                         }, { merge: true });
                         
-                        // Loguear trade del bot (si hubo)
                         if (botUpdates.tradeLog) {
                             const newTradeRef = doc(tradesRef);
                             transaction.set(newTradeRef, botUpdates.tradeLog);
                             delete botUpdates.tradeLog;
                         }
                         
-                        // Loguear trade del jugador
                         const playerTradeRef = doc(tradesRef);
-                        transaction.set(playerTradeRef, { type: 'sell', coinSymbol: coinData.symbol, amountSsol: ssolReceived, amountToken: tokensToSell, price: coinData.currentPrice, timestamp: serverTimestamp() });
+                        transaction.set(playerTradeRef, { type: 'sell', coinSymbol: coinData.symbol, amountSsol: ssolReceived, amountToken: tokensToSell, price: coinData.currentPrice, timestamp: serverTimestamp(), isWash: false });
 
                         transaction.update(coinRef, {
                              ...botUpdates, 
@@ -1237,7 +1466,8 @@
                             holderCount: newHolderCount,
                             lastHolderCountChange: newLastHolderCountChange,
                             creatorFeesToken: newCreatorFeesToken,
-                            allTimeHigh: newAllTimeHigh // Guardar ATH
+                            allTimeHigh: newAllTimeHigh,
+                            allTimeLow: newAllTimeLow
                         });
                     });
                     
@@ -1249,15 +1479,370 @@
                     showMessage(error.message);
                 }
             });
+            
+            // Listeners para botones de Venta Rápida
+            document.querySelectorAll('.sell-percent-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const percent = parseFloat(btn.dataset.percent);
+                    const coin = myPortfolioCache.get(selectedCoinId);
+                    if (coin) {
+                        const amountToSell = coin.amount * percent;
+                        sellAmountEl.value = amountToSell.toFixed(2);
+                    } else {
+                        showMessage("No tienes esta moneda en tu portafolio.");
+                        sellAmountEl.value = '0';
+                    }
+                });
+            });
+            
+            // --- NUEVAS FUNCIONES: P2P, PANEL DE CREADOR, TIENDA ---
+            
+            // Formulario de Enviar sSOL (P2P)
+            sendSsolFormEl.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const amountToSend = parseFloat(sendSsolAmountEl.value);
+                
+                if (!targetPlayerId || isNaN(amountToSend) || amountToSend <= 0) {
+                    showMessage("Monto inválido.");
+                    return;
+                }
+                
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const senderRef = doc(playersRef, currentUserId);
+                        const receiverRef = doc(playersRef, targetPlayerId);
+                        
+                        const [senderDoc, receiverDoc] = await Promise.all([
+                            transaction.get(senderRef),
+                            transaction.get(receiverRef)
+                        ]);
+                        
+                        if (!senderDoc.exists() || !receiverDoc.exists()) {
+                            throw new Error("No se encontró al remitente o destinatario.");
+                        }
+                        
+                        const senderData = senderDoc.data();
+                        if (senderData.sSOL_balance < amountToSend) {
+                            throw new Error("sSOL insuficiente para enviar.");
+                        }
+                        
+                        const receiverData = receiverDoc.data();
+                        
+                        // Actualizar balances
+                        transaction.update(senderRef, {
+                            sSOL_balance: senderData.sSOL_balance - amountToSend
+                        });
+                        transaction.update(receiverRef, {
+                            sSOL_balance: receiverData.sSOL_balance + amountToSend
+                        });
+                    });
+                    
+                    showMessage(`¡Enviaste ${formatNumber(amountToSend)} sSOL a ...${targetPlayerId.slice(-6)}!`);
+                    hideModal(sendSsolModalEl);
+                    sendSsolFormEl.reset();
+                    
+                } catch (error) {
+                    console.error("Error al enviar sSOL:", error);
+                    showMessage(error.message);
+                }
+            });
+            
+            // Mostrar Panel de Creador
+            function showCreatorDashboard() {
+                creatorCoinsListEl.innerHTML = '';
+                let hasCoins = false;
+                
+                allCoinsCache.forEach((coin, coinId) => {
+                    if (coin.creatorId === currentUserId) {
+                        hasCoins = true;
+                        const itemEl = document.createElement('div');
+                        itemEl.className = 'bg-gray-800 p-3 rounded-lg';
+                        itemEl.innerHTML = `
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="font-semibold text-lg">${coin.name} (${coin.symbol})</span>
+                                <button data-coin-id="${coinId}" class="go-live-btn ${coin.isLive ? 'bg-gray-600' : 'bg-red-600 hover:bg-red-700'} text-white font-bold py-2 px-3 rounded-md text-sm transition">
+                                    ${coin.isLive ? 'EN VIVO' : 'Ir en Vivo'}
+                                </button>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-3">
+                                <!-- Columna de Comisiones -->
+                                <div class="bg-gray-700/50 p-3 rounded-lg">
+                                    <h4 class="font-semibold mb-2">Comisiones Ganadas</h4>
+                                    <div class="text-sm text-gray-300">
+                                        sSOL: <span id="fee-ssol-${coinId}">${formatNumber(coin.creatorFeesSsol)}</span>
+                                    </div>
+                                    <div class="text-sm text-gray-300">
+                                        ${coin.symbol}: <span id="fee-token-${coinId}">${formatNumber(coin.creatorFeesToken)}</span>
+                                    </div>
+                                    <button data-coin-id="${coinId}" class="claim-fee-btn w-full mt-2 bg-solana-green text-gray-900 font-bold py-2 px-3 rounded-md text-sm hover:bg-opacity-80 transition">
+                                        Reclamar
+                                    </button>
+                                </div>
+                                
+                                <!-- Columna de Bots de Volumen -->
+                                <div class="bg-gray-700/50 p-3 rounded-lg">
+                                    <h4 class="font-semibold mb-2">Bots de Volumen</h4>
+                                    <div class="text-sm text-gray-300 mb-2">
+                                        Presupuesto: ${formatNumber(coin.washTradeBudget || 0)} sSOL
+                                    </div>
+                                    <form class="wash-trade-form flex gap-2" data-coin-id="${coinId}">
+                                        <input type="number" step="0.1" min="0.1" placeholder="sSOL" class="w-full px-2 py-1 bg-gray-800 border border-gray-600 rounded-md text-sm">
+                                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-sm">
+                                            Añadir
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        `;
+                        creatorCoinsListEl.appendChild(itemEl);
+                    }
+                });
+                
+                if (!hasCoins) {
+                    creatorCoinsListEl.innerHTML = '<p class="text-gray-400 text-center">No has creado ninguna moneda.</p>';
+                }
+                
+                // Añadir listeners a los botones del panel
+                creatorCoinsListEl.querySelectorAll('.claim-fee-btn').forEach(btn => btn.addEventListener('click', (e) => claimFees(e.target.dataset.coinId, e.target)));
+                creatorCoinsListEl.querySelectorAll('.go-live-btn').forEach(btn => btn.addEventListener('click', (e) => toggleLive(e.target.dataset.coinId, e.target)));
+                creatorCoinsListEl.querySelectorAll('.wash-trade-form').forEach(form => form.addEventListener('submit', (e) => addWashTradeBudget(e, e.target.dataset.coinId)));
+                
+                showModal(creatorDashboardModalEl);
+            }
+            
+            // Lógica para Reclamar Comisiones
+            async function claimFees(coinId, btn) {
+                const coin = allCoinsCache.get(coinId);
+                if (!coin || (coin.creatorFeesSsol < 0.0001 && coin.creatorFeesToken < 0.0001)) {
+                    throw new Error("No hay comisiones que reclamar.");
+                }
+                
+                btn.disabled = true;
+                btn.textContent = '...';
+                
+                const ssolToClaim = coin.creatorFeesSsol;
+                const tokensToClaim = coin.creatorFeesToken;
+                
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const coinRef = doc(roomRef, coinId);
+                        const playerRef = doc(playersRef, currentUserId);
+                        const walletRef = doc(playersRef, currentUserId, 'wallet', coinId);
+                        
+                        const [coinDoc, playerDoc, walletDoc] = await Promise.all([
+                            transaction.get(coinRef),
+                            transaction.get(playerRef),
+                            transaction.get(walletRef)
+                        ]);
+                        
+                        if (!coinDoc.exists() || !playerDoc.exists()) throw new Error("No se encontraron datos.");
+                        
+                        const coinData = coinDoc.data();
+                        const playerData = playerDoc.data();
+                        const walletData = walletDoc.exists() ? walletDoc.data() : { amount: 0 };
+                        
+                        if (coinData.creatorFeesSsol < ssolToClaim || coinData.creatorFeesToken < tokensToClaim) {
+                             throw new Error("Conflicto de transacción, intenta de nuevo.");
+                        }
+                        
+                        transaction.update(coinRef, { creatorFeesSsol: 0, creatorFeesToken: 0 });
+                        transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance + ssolToClaim });
+                        transaction.set(walletRef, { amount: walletData.amount + tokensToClaim }, { merge: true });
+                    });
+                    
+                    showMessage("¡Comisiones reclamadas!");
+                    document.getElementById(`fee-ssol-${coinId}`).textContent = "0";
+                    document.getElementById(`fee-token-${coinId}`).textContent = "0";
+                    btn.textContent = "Reclamado";
+
+                } catch (e) {
+                    showMessage(e.message);
+                    btn.disabled = false;
+                    btn.textContent = "Reclamar";
+                }
+            }
+            
+            // Lógica para "Go Live"
+            async function toggleLive(coinId, btn) {
+                const coin = allCoinsCache.get(coinId);
+                const newState = !coin.isLive;
+                
+                btn.disabled = true;
+                btn.textContent = '...';
+                
+                try {
+                    const coinRef = doc(roomRef, coinId);
+                    await updateDoc(coinRef, {
+                        isLive: newState,
+                        liveViewers: newState ? 50 + Math.floor(Math.random() * 50) : 0 // Viewers iniciales
+                    });
+                    showMessage(newState ? "¡Estás en vivo!" : "Directo finalizado.");
+                    btn.textContent = newState ? "EN VIVO" : "Ir en Vivo";
+                    btn.classList.toggle('bg-gray-600', newState);
+                    btn.classList.toggle('bg-red-600', !newState);
+                    btn.disabled = false;
+                } catch (e) {
+                    showMessage(e.message);
+                    btn.disabled = false;
+                }
+            }
+            
+            // Lógica para "Wash Trade" (Bots de Volumen)
+            async function addWashTradeBudget(e, coinId) {
+                e.preventDefault();
+                const form = e.target;
+                const input = form.querySelector('input');
+                const btn = form.querySelector('button');
+                const amount = parseFloat(input.value);
+                
+                if (isNaN(amount) || amount <= 0) {
+                    showMessage("Monto inválido.");
+                    return;
+                }
+                
+                btn.disabled = true;
+                btn.textContent = '...';
+                
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const playerRef = doc(playersRef, currentUserId);
+                        const coinRef = doc(roomRef, coinId);
+                        
+                        const [playerDoc, coinDoc] = await Promise.all([
+                            transaction.get(playerRef),
+                            transaction.get(coinRef)
+                        ]);
+                        
+                        if (!playerDoc.exists() || !coinDoc.exists()) throw new Error("Datos no encontrados.");
+                        
+                        const playerData = playerDoc.data();
+                        if (playerData.sSOL_balance < amount) throw new Error("sSOL insuficiente.");
+                        
+                        const coinData = coinDoc.data();
+                        
+                        transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance - amount });
+                        transaction.update(coinRef, { washTradeBudget: (coinData.washTradeBudget || 0) + amount });
+                    });
+                    
+                    showMessage(`¡${formatNumber(amount)} sSOL añadidos al bot de volumen!`);
+                    input.value = '';
+                    
+                } catch (e) {
+                    showMessage(e.message);
+                }
+                
+                btn.disabled = false;
+                btn.textContent = 'Añadir';
+            }
+            
+            // Lógica de "Live Stream"
+            function showLiveStream() {
+                if (!selectedCoinId) return;
+                const coin = allCoinsCache.get(selectedCoinId);
+                if (!coin) return;
+                
+                liveCoinNameEl.textContent = `LIVE: ${coin.name}`;
+                liveViewersEl.textContent = formatNumber(coin.liveViewers || 0);
+                showModal(liveStreamModalEl);
+                
+                // Actualizar viewers (simulación)
+                const coinRef = doc(roomRef, selectedCoinId);
+                onSnapshot(coinRef, (doc) => {
+                    if (doc.exists() && doc.data().isLive) {
+                        liveViewersEl.textContent = formatNumber(doc.data().liveViewers || 0);
+                    } else {
+                        hideModal(liveStreamModalEl);
+                    }
+                });
+            }
+            
+            async function boostLiveStream() {
+                if (!selectedCoinId) return;
+                const boostCost = 0.1;
+                
+                boostLiveBtnEl.disabled = true;
+                boostLiveBtnEl.textContent = '...';
+                
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const playerRef = doc(playersRef, currentUserId);
+                        const coinRef = doc(roomRef, selectedCoinId);
+                        
+                        const [playerDoc, coinDoc] = await Promise.all([
+                            transaction.get(playerRef),
+                            transaction.get(coinRef)
+                        ]);
+                        
+                        if (!playerDoc.exists() || !coinDoc.exists()) throw new Error("Datos no encontrados.");
+                        
+                        const playerData = playerDoc.data();
+                        if (playerData.sSOL_balance < boostCost) throw new Error("sSOL insuficiente para el boost.");
+                        
+                        const newViewers = (coinDoc.data().liveViewers || 0) + 100 + Math.floor(Math.random() * 200);
+                        
+                        transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance - boostCost });
+                        transaction.update(coinRef, { liveViewers: newViewers });
+                    });
+                    
+                    showMessage("¡Boost aplicado! Más viewers están entrando.");
+                    
+                } catch (e) {
+                    showMessage(e.message);
+                }
+                
+                boostLiveBtnEl.disabled = false;
+                boostLiveBtnEl.textContent = 'Pagar Boost (0.1 sSOL)';
+            }
+            
+            // Lógica de Tienda de Lujo
+            document.querySelectorAll('#buy-lambo-btn, #buy-mansion-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const item = e.target.dataset.item;
+                    const cost = parseFloat(e.target.dataset.cost);
+                    
+                    e.target.disabled = true;
+                    e.target.textContent = '...';
+                    
+                    try {
+                        await runTransaction(db, async (transaction) => {
+                            const playerRef = doc(playersRef, currentUserId);
+                            const playerDoc = await transaction.get(playerRef);
+                            if (!playerDoc.exists()) throw new Error("No se encontró al jugador.");
+                            
+                            const playerData = playerDoc.data();
+                            if (playerData.sSOL_balance < cost) throw new Error("sSOL insuficiente.");
+                            
+                            const newBalance = playerData.sSOL_balance - cost;
+                            const currentItemCount = playerData.assets && playerData.assets[item] ? playerData.assets[item] : 0;
+                            
+                            // Usar notación de puntos para actualizar un campo de mapa
+                            transaction.update(playerRef, {
+                                sSOL_balance: newBalance,
+                                [`assets.${item}`]: currentItemCount + 1
+                            });
+                        });
+                        
+                        showMessage(`¡Felicidades! ¡Compraste un ${item === 'lambo' ? 'Lambo' : 'Mansión'}!`);
+                        
+                    } catch (e) {
+                        showMessage(e.message);
+                    }
+                    
+                    e.target.disabled = false;
+                    e.target.innerHTML = e.target.dataset.item === 'lambo' ? 'Comprar Lambo <br>(5 sSOL)' : 'Comprar Mansión <br>(20 sSOL)';
+                });
+            });
+
 
             // --- INICIAR EL JUEGO ---
             initAuth();
             initChart();
             
-            // Iniciar el bucle de bots proactivos (se llama una vez, luego se auto-llama)
             setTimeout(proactiveBotLoop, 5000); 
+            setTimeout(washTradeBotLoop, 3000); // Iniciar el bucle de bots de volumen
             
-            showMessage("¡Bienvenido! Bots actualizados con lógica de 'Token Muerto' (>80% de caída) y 'Toma de Ganancias'.");
+            showMessage("¡Bienvenido! Nuevas funciones: Live, Boost, Bots de Volumen y Tienda de Lujo.");
         
         } // --- FIN: ENVOLTORIO MAIN ASYNC ---
 
