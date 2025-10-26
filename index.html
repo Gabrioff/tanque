@@ -914,7 +914,7 @@
             }
 
             function listenForMySocialPosts(userId) {
-                const postsQuery = query(collection(socialPostsRef), orderBy('createdAt', 'desc'));
+                const postsQuery = query(socialPostsRef, orderBy('createdAt', 'desc'));
                 onSnapshot(postsQuery, (snapshot) => {
                     mySocialPostsEl.innerHTML = '';
                     mySocialPostsCache.clear();
@@ -940,7 +940,9 @@
             }
             
             function listenForGlobalSocialFeed() {
-                const q = query(socialPostsRef, orderBy("boosted", "desc"), orderBy("createdAt", "desc"), limit(50));
+                // CORRECCIÓN: Se eliminó el orderBy("boosted") para evitar el error de índice.
+                // Se ordena en el cliente. Se aumenta el límite para un mejor orden.
+                const q = query(socialPostsRef, orderBy("createdAt", "desc"), limit(100));
                 onSnapshot(q, (snapshot) => {
                     socialFeedListEl.innerHTML = '';
                     globalSocialFeedCache.clear();
@@ -948,9 +950,29 @@
                         socialFeedListEl.innerHTML = '<p class="text-gray-400 text-center">¡El feed está vacío! Sé el primero en postear.</p>';
                         return;
                     }
+
+                    // --- INICIO DE LA CORRECCIÓN ---
+                    // 1. Convertir snapshot a array
+                    const posts = [];
                     snapshot.forEach(doc => {
-                        const post = { id: doc.id, ...doc.data() };
-                        globalSocialFeedCache.set(doc.id, post);
+                        posts.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    // 2. Ordenar en JavaScript: boosted=true primero, luego por fecha
+                    posts.sort((a, b) => {
+                        if (a.boosted && !b.boosted) return -1; // a (boostado) va primero
+                        if (!a.boosted && b.boosted) return 1;  // b (boostado) va primero
+                        
+                        // Si ambos son boosted o ambos no lo son, ordenar por fecha (descendente)
+                        const dateA = a.createdAt?.toDate() || new Date(0);
+                        const dateB = b.createdAt?.toDate() || new Date(0);
+                        return dateB - dateA;
+                    });
+                    // --- FIN DE LA CORRECCIÓN ---
+
+                    // 3. Iterar sobre el array ordenado (posts) y tomar los primeros 50
+                    posts.slice(0, 50).forEach(post => {
+                        globalSocialFeedCache.set(post.id, post);
                         
                         const player = allPlayersCache.get(post.userId) || { username: 'Desconocido', avatarUrl: '' };
                         const postEl = document.createElement('div');
@@ -2139,7 +2161,7 @@
                 playerProfilePostsEl.innerHTML = '<p class="text-gray-400 text-sm">Cargando posts...</p>';
                 showModal(playerProfileModalEl);
                 
-                const postsQuery = query(collection(socialPostsRef), orderBy('createdAt', 'desc'), limit(10));
+                const postsQuery = query(socialPostsRef, orderBy('createdAt', 'desc'), limit(10));
                 const postsSnapshot = await getDocs(postsQuery);
                 playerProfilePostsEl.innerHTML = '';
                 let hasPosts = false;
@@ -2250,5 +2272,7 @@
     </script>
 </body>
 </html>
+
+
 
 
