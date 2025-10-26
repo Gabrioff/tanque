@@ -4,12 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solana Memecoin Simulator</title>
-    <!-- Cargar Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Cargar Chart.js (para las gráficas) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Configuración de Tailwind para modo oscuro -->
-    <script>
+    <!-- Cargar Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Cargar Chart.js (para las gráficas) --><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Configuración de Tailwind para modo oscuro --><script>
         tailwind.config = {
             theme: {
                 extend: {
@@ -19,6 +16,7 @@
                     colors: {
                         'solana-green': '#14F195',
                         'solana-purple': '#9945FF',
+                        'x-blue': '#1DA1F2', // Color de Twitter/X
                     },
                     keyframes: {
                         livePulse: {
@@ -28,11 +26,16 @@
                         liveScreen: {
                             '0%, 100%': { backgroundColor: 'rgba(239, 68, 68, 0.2)' }, /* red-500/20 */
                             '50%': { backgroundColor: 'rgba(34, 197, 94, 0.2)' }, /* green-600/20 */
-                        }
+                        },
+                        shimmer: {
+                            '0%': { backgroundPosition: '-1000px 0' },
+                            '100%': { backgroundPosition: '1000px 0' },
+                        },
                     },
                     animation: {
                         livePulse: 'livePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                         liveScreen: 'liveScreen 1.5s ease-in-out infinite',
+                        shimmer: 'shimmer 1.5s infinite linear',
                     }
                 }
             }
@@ -66,12 +69,49 @@
         .modal-content {
             transition: transform 0.25s ease;
         }
+        /* Para el popover de X */
+        .x-popover-container {
+            position: relative;
+            display: inline-block; /* Para que el popover se posicione correctamente */
+        }
+        .x-popover {
+            position: absolute;
+            top: 100%; /* Debajo del icono */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            width: 250px; /* Ancho fijo para el popover */
+            pointer-events: none; /* No bloquear eventos de ratón si no es visible */
+        }
+        .x-popover-container:hover .x-popover,
+        .x-popover-container:focus-within .x-popover { /* focus-within para accesibilidad táctil */
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto; /* Habilitar eventos de ratón cuando visible */
+        }
+
+        /* Shimmer loading effect */
+        .shimmer-bg {
+            background: linear-gradient(to right, #2d3748 4%, #4a5568 25%, #2d3748 36%);
+            background-size: 1000px 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+        .shimmer-text {
+            background-color: #4a5568;
+            height: 1em;
+            width: 80%;
+            border-radius: 4px;
+            display: inline-block;
+        }
     </style>
+    <!-- Iconos Phosphor (para el icono de X) --><script src="https://unpkg.com/@phosphor-icons/web@2.0.3"></script>
 </head>
 <body class="bg-gray-900 text-white font-sans antialiased flex flex-col min-h-screen">
 
-    <!-- Encabezado -->
-    <header class="bg-gray-800 shadow-lg sticky top-0 z-30">
+    <!-- Encabezado --><header class="bg-gray-800 shadow-lg sticky top-0 z-30">
         <nav class="container mx-auto px-4 py-3 flex justify-between items-center">
             <h1 class="text-xl lg:text-2xl font-bold text-solana-green">
                 🚀 Solana Memecoin Sim
@@ -88,14 +128,11 @@
         </div>
     </header>
 
-    <!-- Contenido Principal -->
-    <main class="container mx-auto p-4 flex-grow flex flex-col lg:flex-row gap-4">
+    <!-- Contenido Principal --><main class="container mx-auto p-4 flex-grow flex flex-col lg:flex-row gap-4">
 
-        <!-- Columna Izquierda: Controles y Portafolio -->
-        <aside class="w-full lg:w-1/3 flex flex-col gap-4">
+        <!-- Columna Izquierda: Controles, Portafolio, SocialFi --><aside class="w-full lg:w-1/3 flex flex-col gap-4">
             
-            <!-- Botones de Acción -->
-            <div class="glassmorphism rounded-lg shadow-xl p-4 grid grid-cols-2 gap-2">
+            <!-- Botones de Acción --><div class="glassmorphism rounded-lg shadow-xl p-4 grid grid-cols-2 gap-2">
                  <button id="show-create-modal-btn" class="w-full bg-solana-purple hover:bg-opacity-80 text-white font-bold py-3 px-4 rounded-md transition duration-200 text-sm">
                     ✨ Lanzar Moneda
                 </button>
@@ -104,8 +141,40 @@
                 </button>
             </div>
             
-            <!-- Tienda de Lujo -->
-            <div class="glassmorphism rounded-lg shadow-xl p-4">
+            <!-- Mi Portafolio --><div class="glassmorphism rounded-lg shadow-xl p-4 flex-grow flex flex-col">
+                <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Mi Portafolio</h2>
+                <div id="portfolio-list" class="flex-grow overflow-y-auto h-48 lg:h-auto space-y-2 pr-2">
+                    <p class="text-gray-400">Aún no tienes monedas.</p>
+                </div>
+            </div>
+
+            <!-- Red Social del Jugador --><div class="glassmorphism rounded-lg shadow-xl p-4">
+                <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Mi Red Social</h2>
+                <div id="social-profile" class="text-center mb-4">
+                    <img id="social-avatar" src="https://via.placeholder.com/60/374151/FFFFFF?text=P" alt="Avatar" class="w-16 h-16 rounded-full mx-auto mb-2 border-2 border-solana-green">
+                    <p id="social-username" class="text-lg font-bold text-solana-green">Cargando...</p>
+                    <p class="text-sm text-gray-400">Seguidores: <span id="social-followers">0</span></p>
+                </div>
+
+                <div class="space-y-2 mb-4">
+                    <button id="edit-social-profile-btn" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
+                        Editar Perfil
+                    </button>
+                    <button id="create-social-post-btn" class="w-full bg-solana-purple hover:bg-opacity-80 text-white font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
+                        Crear Post
+                    </button>
+                    <button id="launch-socialfi-coin-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-md transition duration-200 text-sm hidden">
+                        💎 Lanzar Moneda (SocialFi)
+                    </button>
+                </div>
+
+                <h3 class="font-semibold text-md mb-2 border-t border-gray-700 pt-3">Mis Posts</h3>
+                <div id="my-social-posts" class="space-y-3 h-48 overflow-y-auto pr-2">
+                    <p class="text-gray-400 text-sm">Aún no has hecho posts.</p>
+                </div>
+            </div>
+
+            <!-- Tienda de Lujo --><div class="glassmorphism rounded-lg shadow-xl p-4">
                 <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Tienda de Lujo</h2>
                 <div class="grid grid-cols-2 gap-2">
                     <button id="buy-lambo-btn" data-item="lambo" data-cost="5" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 px-3 rounded-md transition duration-200 text-sm">
@@ -117,33 +186,21 @@
                 </div>
             </div>
             
-            <!-- Mis Activos (Lujo) -->
-            <div class="glassmorphism rounded-lg shadow-xl p-4">
+            <!-- Mis Activos (Lujo) --><div class="glassmorphism rounded-lg shadow-xl p-4">
                 <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Mis Activos</h2>
                 <div id="my-assets-list" class="flex flex-wrap gap-2">
                     <p class="text-gray-400 text-sm">Aún no tienes activos de lujo.</p>
                 </div>
             </div>
 
-
-            <!-- Mi Portafolio -->
-            <div class="glassmorphism rounded-lg shadow-xl p-4 flex-grow flex flex-col">
-                <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Mi Portafolio</h2>
-                <div id="portfolio-list" class="flex-grow overflow-y-auto h-48 lg:h-auto space-y-2 pr-2">
-                    <p class="text-gray-400">Aún no tienes monedas.</p>
-                </div>
-            </div>
-
-            <!-- Trades Recientes -->
-            <div class="glassmorphism rounded-lg shadow-xl p-4 flex-grow flex flex-col">
+            <!-- Trades Recientes --><div class="glassmorphism rounded-lg shadow-xl p-4 flex-grow flex flex-col">
                 <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Trades Recientes</h2>
                 <div id="top-trades-list" class="flex-grow overflow-y-auto h-48 lg:h-auto space-y-2 pr-2">
                     <p class="text-gray-400">Esperando trades...</p>
                 </div>
             </div>
 
-            <!-- Jugadores en la Sala -->
-            <div class="glassmorphism rounded-lg shadow-xl p-4 flex-grow flex flex-col">
+            <!-- Jugadores en la Sala --><div class="glassmorphism rounded-lg shadow-xl p-4 flex-grow flex flex-col">
                 <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Jugadores en la Sala</h2>
                 <div id="players-list" class="flex-grow overflow-y-auto h-48 lg:h-auto space-y-2 pr-2">
                     <p class="text-gray-400">Cargando jugadores...</p>
@@ -151,9 +208,13 @@
             </div>
         </aside>
 
-        <!-- Columna Derecha: Lista de Monedas -->
-        <section class="w-full lg:w-2/3 glassmorphism rounded-lg shadow-xl p-4 flex flex-col">
+        <!-- Columna Derecha: Lista de Monedas --><section class="w-full lg:w-2/3 glassmorphism rounded-lg shadow-xl p-4 flex flex-col">
             <h2 class="text-xl font-semibold mb-3 border-b border-gray-700 pb-2">Mercado de Memecoins</h2>
+            
+            <!-- Filtro de Monedas --><div class="mb-3">
+                <input type="text" id="coin-filter-input" placeholder="Filtrar por nombre o símbolo..." class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-solana-purple">
+            </div>
+
             <div id="memecoin-list" class="flex-grow overflow-y-auto space-y-2 pr-2 h-96 lg:h-[80vh]">
                 <p class="text-gray-400">No hay monedas. ¡Lanza la primera!</p>
             </div>
@@ -161,8 +222,7 @@
 
     </main>
 
-    <!-- Modal para Mensajes Simples -->
-    <div id="message-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden opacity-0 visibility-hidden">
+    <!-- Modal para Mensajes Simples --><div id="message-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden opacity-0 visibility-hidden">
         <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-sm mx-auto text-center transform scale-95">
             <p id="message-text" class="text-lg mb-4">Mensaje</p>
             <button id="close-message-btn" class="bg-solana-purple hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded-md transition duration-200">
@@ -171,8 +231,7 @@
         </div>
     </div>
     
-    <!-- Modal para Crear Moneda -->
-    <div id="create-coin-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
+    <!-- Modal para Crear Moneda --><div id="create-coin-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
         <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-md w-full text-center transform scale-95 overflow-y-auto max-h-full">
             <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
                 <h2 class="text-xl font-semibold">Lanzar Nueva Memecoin</h2>
@@ -188,8 +247,12 @@
                     <input type="text" id="coin-symbol" required class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-solana-purple" maxlength="5" autocapitalize="characters">
                 </div>
                 <div>
-                    <label for="coin-image-url" class="block text-sm font-medium text-gray-300">URL de Imagen</glabel>
+                    <label for="coin-image-url" class="block text-sm font-medium text-gray-300">URL de Imagen</label>
                     <input type="url" id="coin-image-url" placeholder="https://..." class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-solana-purple">
+                </div>
+                <div>
+                    <label for="coin-x-url" class="block text-sm font-medium text-gray-300">URL de X (Twitter)</label>
+                    <input type="url" id="coin-x-url" placeholder="https://x.com/yourcoin" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-x-blue">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                      <div>
@@ -208,8 +271,7 @@
         </div>
     </div>
     
-    <!-- Modal para Gráfica y Trading -->
-    <div id="chart-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
+    <!-- Modal para Gráfica y Trading --><div id="chart-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
         <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-3xl w-full text-center transform scale-95 overflow-y-auto max-h-full">
             
             <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
@@ -221,34 +283,29 @@
             </div>
 
             <p id="modal-coin-price" class="text-xl font-mono text-center text-gray-300 mb-4">$0.00</p>
+            <p id="modal-contract-id" class="text-sm font-mono text-center text-gray-500 mb-4">ID de Contrato: ...</p>
             
-            <!-- Canvas para la gráfica -->
-            <div class="relative h-48 md:h-72 mb-4">
+            <!-- Canvas para la gráfica --><div class="relative h-48 md:h-72 mb-4">
                 <canvas id="coin-chart-modal"></canvas>
             </div>
             
-            <!-- Botón para ver "Live" -->
-            <button id="view-live-btn" class="hidden w-full mb-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+            <!-- Botón para ver "Live" --><button id="view-live-btn" class="hidden w-full mb-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
                 Ver Directo
             </button>
 
-            <!-- Formularios de Compra/Venta -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Comprar -->
-                <form id="buy-form-modal" class="space-y-2 glassmorphism p-4 rounded-lg">
+            <!-- Formularios de Compra/Venta --><div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Comprar --><form id="buy-form-modal" class="space-y-2 glassmorphism p-4 rounded-lg">
                     <label for="buy-amount-ssol-modal" class="block text-sm font-medium text-gray-300">Gastar (sSOL) - Fee 0.3%</label>
-                    <input type="number" id="buy-amount-ssol-modal" step="0.01" min="0.01" placeholder="0.1" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-solana-green" required>
+                    <input type="number" id="buy-amount-ssol-modal" step="0.00000001" min="0.00000001" placeholder="0.1" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-solana-green" required>
                     <button type="submit" class="w-full bg-solana-green hover:bg-opacity-80 text-gray-900 font-bold py-2 px-4 rounded-md transition duration-200">
                         Comprar
                     </button>
                 </form>
                 
-                <!-- Vender -->
-                <form id="sell-form-modal" class="space-y-2 glassmorphism p-4 rounded-lg">
+                <!-- Vender --><form id="sell-form-modal" class="space-y-2 glassmorphism p-4 rounded-lg">
                     <label for="sell-amount-token-modal" class="block text-sm font-medium text-gray-300">Vender (Tokens) - Fee 0.3%</label>
-                    <input type="number" id="sell-amount-token-modal" step="1" min="1" placeholder="1000" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
-                    <!-- Botones de Venta Rápida -->
-                    <div class="grid grid-cols-3 gap-2 text-xs">
+                    <input type="number" id="sell-amount-token-modal" step="0.00000001" min="0.00000001" placeholder="1000" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
+                    <!-- Botones de Venta Rápida --><div class="grid grid-cols-3 gap-2 text-xs">
                         <button type="button" class="sell-percent-btn bg-gray-700 hover:bg-gray-600 py-1 rounded" data-percent="0.10">10%</button>
                         <button type="button" class="sell-percent-btn bg-gray-700 hover:bg-gray-600 py-1 rounded" data-percent="0.50">50%</button>
                         <button type="button" class="sell-percent-btn bg-gray-700 hover:bg-gray-600 py-1 rounded" data-percent="1.00">100%</button>
@@ -261,8 +318,7 @@
         </div>
     </div>
     
-    <!-- Modal para Panel de Creador -->
-    <div id="creator-dashboard-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
+    <!-- Modal para Panel de Creador --><div id="creator-dashboard-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
         <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-4xl w-full text-center transform scale-95 overflow-y-auto max-h-full">
             <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
                 <h2 class="text-xl font-semibold">Panel de Creador</h2>
@@ -274,8 +330,7 @@
         </div>
     </div>
     
-    <!-- Modal para Enviar sSOL (P2P) -->
-    <div id="send-ssol-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
+    <!-- Modal para Enviar sSOL (P2P) --><div id="send-ssol-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
         <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-md w-full text-center transform scale-95">
             <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
                 <h2 class="text-xl font-semibold">Enviar sSOL</h2>
@@ -294,29 +349,74 @@
         </div>
     </div>
     
-    <!-- Modal para "Live Stream" -->
-    <div id="live-stream-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden opacity-0 visibility-hidden p-4">
+    <!-- Modal para "Live Stream" --><div id="live-stream-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden opacity-0 visibility-hidden p-4">
         <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-2xl w-full text-center transform scale-95">
             <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
                 <h2 id="live-coin-name" class="text-xl font-semibold text-red-500 animate-pulse">LIVE: ...</h2>
                 <button id="close-live-stream-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
-            <!-- Pantalla simulada -->
-            <div class="w-full h-64 bg-black rounded-lg mb-4 animate-liveScreen border-2 border-gray-700 flex items-center justify-center">
+            <!-- Pantalla simulada --><div class="w-full h-64 bg-black rounded-lg mb-4 animate-liveScreen border-2 border-gray-700 flex items-center justify-center">
                 <span class="text-3xl font-bold text-gray-500">SIMULACIÓN DE LIVE</span>
             </div>
             <div class="flex justify-between items-center mb-3">
                 <div class="text-lg">Espectadores: <span id="live-viewers" class="font-bold text-solana-green">...</span></div>
-                <button id="boost-live-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
-                    Pagar Boost (0.1 sSOL)
-                </button>
+                <div class="flex space-x-2">
+                    <button id="boost-live-btn-small" data-boost-level="small" class="boost-live-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-md text-sm transition">
+                        Boost (0.1 sSOL)
+                    </button>
+                    <button id="boost-live-btn-medium" data-boost-level="medium" class="boost-live-btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md text-sm transition">
+                        Boost (1 sSOL)
+                    </button>
+                    <button id="boost-live-btn-large" data-boost-level="large" class="boost-live-btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-md text-sm transition">
+                        Boost (10 sSOL)
+                    </button>
+                </div>
             </div>
+        </div>
+    </div>
+    
+    <!-- Modal para Editar Perfil Social --><div id="edit-social-profile-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
+        <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-md w-full text-center transform scale-95">
+            <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
+                <h2 class="text-xl font-semibold">Editar Perfil Social</h2>
+                <button id="close-edit-social-profile-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <form id="edit-social-profile-form" class="space-y-3 text-left">
+                <div>
+                    <label for="social-username-input" class="block text-sm font-medium text-gray-300">Nombre de Usuario</label>
+                    <input type="text" id="social-username-input" required class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-solana-purple" maxlength="15">
+                </div>
+                <div>
+                    <label for="social-avatar-input" class="block text-sm font-medium text-gray-300">URL de Avatar</label>
+                    <input type="url" id="social-avatar-input" placeholder="https://..." class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-solana-purple">
+                </div>
+                <button type="submit" class="w-full bg-solana-purple hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                    Guardar Perfil
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Crear Post Social --><div id="create-social-post-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-40 hidden opacity-0 visibility-hidden p-4">
+        <div class="modal-content glassmorphism p-6 rounded-lg shadow-2xl max-w-md w-full text-center transform scale-95">
+            <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
+                <h2 class="text-xl font-semibold">Crear Nuevo Post</h2>
+                <button id="close-create-social-post-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <form id="create-social-post-form" class="space-y-3 text-left">
+                <div>
+                    <label for="social-post-text" class="block text-sm font-medium text-gray-300">Texto del Post</label>
+                    <textarea id="social-post-text" rows="4" required class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-solana-purple" maxlength="280" placeholder="¿Qué estás pensando?"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-solana-purple hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                    Publicar Post
+                </button>
+            </form>
         </div>
     </div>
 
 
-    <!-- Scripts de Firebase y Lógica del Juego -->
-    <script type="module">
+    <!-- Scripts de Firebase y Lógica del Juego --><script type="module">
         // Importar funciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
@@ -378,6 +478,7 @@
             const modalCoinPriceEl = document.getElementById('modal-coin-price');
             const modalLiveBadgeEl = document.getElementById('modal-live-badge');
             const viewLiveBtnEl = document.getElementById('view-live-btn');
+            const modalContractIdEl = document.getElementById('modal-contract-id');
             
             const creatorDashboardModalEl = document.getElementById('creator-dashboard-modal');
             const showCreatorDashboardBtn = document.getElementById('show-creator-dashboard-btn');
@@ -394,7 +495,22 @@
             const closeLiveStreamBtn = document.getElementById('close-live-stream-btn');
             const liveCoinNameEl = document.getElementById('live-coin-name');
             const liveViewersEl = document.getElementById('live-viewers');
-            const boostLiveBtnEl = document.getElementById('boost-live-btn');
+            const boostLiveBtnSmallEl = document.getElementById('boost-live-btn-small');
+            const boostLiveBtnMediumEl = document.getElementById('boost-live-btn-medium');
+            const boostLiveBtnLargeEl = document.getElementById('boost-live-btn-large');
+
+            const editSocialProfileModalEl = document.getElementById('edit-social-profile-modal');
+            const closeEditSocialProfileBtn = document.getElementById('close-edit-social-profile-btn');
+            const showEditSocialProfileBtn = document.getElementById('edit-social-profile-btn');
+            const editSocialProfileFormEl = document.getElementById('edit-social-profile-form');
+            const socialUsernameInputEl = document.getElementById('social-username-input');
+            const socialAvatarInputEl = document.getElementById('social-avatar-input');
+
+            const createSocialPostModalEl = document.getElementById('create-social-post-modal');
+            const closeCreateSocialPostBtn = document.getElementById('close-create-social-post-btn');
+            const createSocialPostBtn = document.getElementById('create-social-post-btn');
+            const createSocialPostFormEl = document.getElementById('create-social-post-form');
+            const socialPostTextEl = document.getElementById('social-post-text');
             
             // --- FUNCIONES DE MODAL ---
             function showModal(modalEl) {
@@ -435,8 +551,22 @@
             closeSendSsolBtn.addEventListener('click', () => hideModal(sendSsolModalEl));
             closeLiveStreamBtn.addEventListener('click', () => hideModal(liveStreamModalEl));
             viewLiveBtnEl.addEventListener('click', () => showLiveStream());
-            boostLiveBtnEl.addEventListener('click', () => boostLiveStream());
+            boostLiveBtnSmallEl.addEventListener('click', (e) => boostLiveStream(e.target.dataset.boostLevel));
+            boostLiveBtnMediumEl.addEventListener('click', (e) => boostLiveStream(e.target.dataset.boostLevel));
+            boostLiveBtnLargeEl.addEventListener('click', (e) => boostLiveStream(e.target.dataset.boostLevel));
+            
+            showEditSocialProfileBtn.addEventListener('click', () => {
+                const player = allPlayersCache.get(currentUserId);
+                if (player) {
+                    socialUsernameInputEl.value = player.username || '';
+                    socialAvatarInputEl.value = player.avatarUrl || '';
+                }
+                showModal(editSocialProfileModalEl);
+            });
+            closeEditSocialProfileBtn.addEventListener('click', () => hideModal(editSocialProfileModalEl));
 
+            createSocialPostBtn.addEventListener('click', () => showModal(createSocialPostModalEl));
+            closeCreateSocialPostBtn.addEventListener('click', () => hideModal(createSocialPostModalEl));
 
             // --- VARIABLES GLOBALES DEL JUEGO ---
             let currentUserId = null;
@@ -446,6 +576,8 @@
             let allCoinsCache = new Map(); 
             let myPortfolioCache = new Map(); 
             let myAssetsCache = new Map(); // Para items de lujo
+            let allPlayersCache = new Map(); // Para jugadores y red social
+            let mySocialPostsCache = new Map(); // Para posts de la red social
             
             // --- COMISIONES ---
             const LP_FEE = 0.0025; // 0.25% para el pool
@@ -455,8 +587,7 @@
             const roomRef = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'data');
             const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'players');
             const tradesRef = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'trades');
-            const luxuryStoreRef = doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'store', 'luxury');
-
+            const socialPostsRef = collection(db, 'artifacts', appId, 'public', 'data', 'game_rooms', 'global_room', 'social_posts'); // Nueva colección para posts
 
             // --- REFERENCIAS AL DOM (JUEGO) ---
             const ssolBalanceEl = document.getElementById('ssol-balance');
@@ -466,12 +597,22 @@
             const topTradesListEl = document.getElementById('top-trades-list'); 
             const memecoinListEl = document.getElementById('memecoin-list');
             const myAssetsListEl = document.getElementById('my-assets-list');
+            const coinFilterInputEl = document.getElementById('coin-filter-input');
+
+            // SocialFi DOM
+            const socialAvatarEl = document.getElementById('social-avatar');
+            const socialUsernameEl = document.getElementById('social-username');
+            const socialFollowersEl = document.getElementById('social-followers');
+            const mySocialPostsEl = document.getElementById('my-social-posts');
+            const launchSocialFiCoinBtn = document.getElementById('launch-socialfi-coin-btn');
+
 
             // Formularios (dentro de modales)
             const createCoinFormEl = document.getElementById('create-coin-form');
             const coinNameEl = document.getElementById('coin-name');
             const coinSymbolEl = document.getElementById('coin-symbol');
             const coinImageUrlEl = document.getElementById('coin-image-url');
+            const coinXUrlEl = document.getElementById('coin-x-url'); // Nuevo campo de X
             const coinInitialSsolEl = document.getElementById('coin-initial-ssol');
             const coinInitialTokensEl = document.getElementById('coin-initial-tokens');
             
@@ -509,7 +650,7 @@
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         currentUserId = user.uid;
-                        playerIdBannerEl.textContent = `Tu ID de Jugador: ${currentUserId}`;
+                        playerIdBannerEl.textContent = `Tu ID de Jugador: ...${user.uid.slice(-6)}`;
                         await joinGame(user.uid);
                     } else {
                         try {
@@ -531,7 +672,10 @@
                         userId: userId,
                         sSOL_balance: 2, 
                         joinedAt: serverTimestamp(),
-                        assets: {} // Inicializar activos de lujo
+                        assets: {}, 
+                        username: `Jugador${Math.floor(Math.random() * 10000)}`, // Nombre de usuario por defecto
+                        avatarUrl: 'https://via.placeholder.com/60/374151/FFFFFF?text=P',
+                        socialFollowers: 0 // Seguidores de la red social
                     });
                 }
                 
@@ -540,6 +684,8 @@
                 listenForMemecoins();
                 listenForMyPortfolio(userId);
                 listenForTopTrades(); 
+                listenForMySocialProfile(userId); // Nuevo listener para SocialFi
+                listenForMySocialPosts(userId); // Nuevo listener para posts
             }
             
             // --- LISTENERS DE FIRESTORE (TIEMPO REAL) ---
@@ -550,7 +696,6 @@
                     if (doc.exists()) {
                         const data = doc.data();
                         ssolBalanceEl.textContent = `${formatNumber(data.sSOL_balance)} sSOL`;
-                        // Actualizar mis activos de lujo
                         myAssetsCache = new Map(Object.entries(data.assets || {}));
                         updateMyAssetsUI();
                     }
@@ -560,18 +705,20 @@
             function listenForPlayers() {
                 onSnapshot(query(playersRef), (snapshot) => {
                     playersListEl.innerHTML = ''; 
+                    allPlayersCache.clear();
                     if (snapshot.empty) {
                         playersListEl.innerHTML = '<p class="text-gray-400">Estás solo aquí...</p>';
                         return;
                     }
                     snapshot.forEach(doc => {
                         const player = doc.data();
+                        allPlayersCache.set(player.userId, player);
                         const isMe = player.userId === currentUserId;
-                        const playerEl = document.createElement(isMe ? 'div' : 'button'); // Es un botón si no soy yo
+                        const playerEl = document.createElement(isMe ? 'div' : 'button'); 
                         playerEl.className = `flex w-full justify-between items-center p-2 rounded ${isMe ? 'bg-solana-purple/30' : 'bg-gray-800 hover:bg-gray-700 transition'}`;
                         playerEl.innerHTML = `
                             <span class="font-mono text-xs truncate ${isMe ? 'text-solana-green' : ''}" title="${player.userId}">
-                                ${isMe ? 'Tu (...' + player.userId.slice(-6) + ')' : '...' + player.userId.slice(-6)}
+                                ${player.username || '...' + player.userId.slice(-6)} ${isMe ? '(Tú)' : ''}
                             </span>
                             <span class="text-sm font-semibold">${formatNumber(player.sSOL_balance)} sSOL</span>
                         `;
@@ -579,7 +726,7 @@
                         if (!isMe) {
                             playerEl.addEventListener('click', () => {
                                 targetPlayerId = player.userId;
-                                sendSsolTargetNameEl.textContent = `...${player.userId.slice(-6)}`;
+                                sendSsolTargetNameEl.textContent = `${player.username || '...' + player.userId.slice(-6)}`;
                                 showModal(sendSsolModalEl);
                             });
                         }
@@ -589,6 +736,48 @@
                 });
             }
             
+            function listenForMySocialProfile(userId) {
+                const playerRef = doc(playersRef, userId);
+                onSnapshot(playerRef, (doc) => {
+                    if (doc.exists()) {
+                        const player = doc.data();
+                        socialUsernameEl.textContent = player.username || `Jugador${player.userId.slice(-6)}`;
+                        socialAvatarEl.src = player.avatarUrl || 'https://via.placeholder.com/60/374151/FFFFFF?text=P';
+                        socialFollowersEl.textContent = formatNumber(player.socialFollowers || 0);
+
+                        // Mostrar botón de SocialFi si tiene suficientes seguidores
+                        if ((player.socialFollowers || 0) >= 50) {
+                            launchSocialFiCoinBtn.classList.remove('hidden');
+                        } else {
+                            launchSocialFiCoinBtn.classList.add('hidden');
+                        }
+                    }
+                });
+            }
+
+            function listenForMySocialPosts(userId) {
+                const postsQuery = query(collection(playersRef, userId, 'social_posts'), orderBy('createdAt', 'desc'), limit(10));
+                onSnapshot(postsQuery, (snapshot) => {
+                    mySocialPostsEl.innerHTML = '';
+                    mySocialPostsCache.clear();
+                    if (snapshot.empty) {
+                        mySocialPostsEl.innerHTML = '<p class="text-gray-400 text-sm">Aún no has hecho posts.</p>';
+                        return;
+                    }
+                    snapshot.forEach(doc => {
+                        const post = doc.data();
+                        mySocialPostsCache.set(doc.id, post);
+                        const postEl = document.createElement('div');
+                        postEl.className = 'bg-gray-800 p-3 rounded-lg text-sm';
+                        postEl.innerHTML = `
+                            <p>${post.text}</p>
+                            <p class="text-xs text-gray-500 mt-2">${new Date(post.createdAt.toDate()).toLocaleString()}</p>
+                        `;
+                        mySocialPostsEl.appendChild(postEl);
+                    });
+                });
+            }
+
             function listenForTopTrades() {
                 const q = query(tradesRef, orderBy("timestamp", "desc"), limit(15));
                 onSnapshot(q, (snapshot) => {
@@ -631,9 +820,9 @@
 
                     snapshot.forEach(doc => {
                         const coin = doc.data();
-                        if (coin.amount < 0.01) return; 
-                        
-                        myPortfolioCache.set(doc.id, coin);
+                        if (coin.amount < 0.00000001) return; // Un umbral muy bajo para mostrar
+
+                        myPortfolioCache.set(doc.id, { ...coin, id: doc.id });
                         
                         const coinData = allCoinsCache.get(doc.id);
                         const coinName = coinData ? `${coinData.name} (${coinData.symbol})` : 'Moneda Desconocida';
@@ -658,14 +847,6 @@
 
             function listenForMemecoins() {
                 onSnapshot(query(roomRef), (snapshot) => {
-                    memecoinListEl.innerHTML = '';
-                    
-                    if (snapshot.empty) {
-                        memecoinListEl.innerHTML = '<p class="text-gray-400">No hay monedas. ¡Lanza la primera!</p>';
-                        allCoinsCache.clear(); 
-                        return;
-                    }
-                    
                     const newCache = new Map();
                     const coins = [];
                     snapshot.forEach(doc => {
@@ -675,96 +856,131 @@
                     });
                     
                     allCoinsCache = newCache; 
-
-                    coins.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
-
-                    coins.forEach(coin => {
-                        const priceChange = coin.priceHistory.length > 1 ? (coin.currentPrice - coin.priceHistory[coin.priceHistory.length - 2]) / coin.priceHistory[coin.priceHistory.length - 2] : 0;
-                        const changeColor = priceChange >= 0 ? 'text-green-500' : 'text-red-500';
-                        const changeIcon = priceChange >= 0 ? '▲' : '▼';
-                        const placeholderImg = `https://placehold.co/40x40/${coin.id.slice(0,6)}/FFFFFF?text=${coin.symbol}`;
-
-                        const coinEl = document.createElement('button');
-                        coinEl.className = `w-full text-left p-3 rounded-lg transition duration-200 ${selectedCoinId === coin.id ? 'bg-solana-purple/50' : 'bg-gray-800 hover:bg-gray-700'}`;
-                        coinEl.dataset.coinId = coin.id;
-                        coinEl.innerHTML = `
-                            <div class="flex justify-between items-center">
-                                <div class="flex items-center gap-3">
-                                    <img src="${coin.imageUrl || placeholderImg}" onerror="this.src='${placeholderImg}'" alt="${coin.name}" class="w-10 h-10 rounded-full bg-gray-700">
-                                    <div>
-                                        <span class="text-lg font-bold">${coin.name} (${coin.symbol})</span>
-                                        <span class="text-xs text-gray-400 block" title="${coin.creatorId}">Creador: ...${coin.creatorId.slice(-6)}</span>
-                                    </div>
-                                    ${coin.isLive ? `<span class="animate-livePulse text-xs font-bold bg-red-600 text-white px-2 py-0.5 rounded-md ml-2">LIVE</span>` : ''}
-                                </div>
-                                <div class="text-right">
-                                    <span class="text-lg font-mono">${formatPrice(coin.currentPrice)}</span>
-                                    <span class="text-sm font-semibold ${changeColor}">${changeIcon} ${formatNumber(priceChange * 100)}%</span>
-                                </div>
-                            </div>
-                            
-                            <!-- Stats Principales -->
-                            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-3 text-xs text-center">
-                                <div>
-                                    <span class="text-gray-400 block">MC</span>
-                                    <span class="font-semibold">${formatCurrency(coin.marketCap || 0)}</span>
-                                </div>
-                                <div>
-                                    <span class="text-gray-400 block">Liquidez</span>
-                                    <span class="font-semibold">${formatCurrency(coin.sSolPool || 0)}</span>
-                                </div>
-                                 <div>
-                                    <span class="text-gray-400 block">Volumen</span>
-                                    <span class="font-semibold">${formatCurrency(coin.volume || 0)}</span>
-                                </div>
-                                 <div>
-                                    <span class="text-gray-400 block">Holders</span>
-                                    <span class="font-semibold">${formatNumber(coin.holderCount || 0)}</span>
-                                </div>
-                                <div>
-                                    <span class="text-gray-400 block">Seguidores</span>
-                                    <span class="font-semibold">${formatNumber(coin.followers || 0)}</span>
-                                </div>
-                            </div>
-                            
-                            <!-- Stats Secundarias (Nuevas) -->
-                            <div class="grid grid-cols-3 gap-2 mt-2 text-xs text-center pt-2 border-t border-gray-700/50">
-                                <div>
-                                    <span class="text-gray-400 block">Fondos Bots</span>
-                                    <span class="font-semibold">${formatNumber(coin.botTokenPool || 0)}</span>
-                                </div>
-                                <div>
-                                    <span class="text-gray-400 block">Precio Máx.</span>
-                                    <span class="font-semibold text-green-400">${formatPrice(coin.allTimeHigh || 0)}</span>
-                                </div>
-                                 <div>
-                                    <span class="text-gray-400 block">Precio Mín.</span>
-                                    <span class="font-semibold text-red-400">${formatPrice(coin.allTimeLow || 0)}</span>
-                                </div>
-                            </div>
-
-                            <div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-400">
-                                <span class="font-semibold text-gray-300">Comisiones Creador:</span> 
-                                <span>${formatNumber(coin.creatorFeesSsol || 0)} sSOL</span> | 
-                                <span>${formatNumber(coin.creatorFeesToken || 0)} ${coin.symbol}</span>
-                            </div>
-                        `;
-                        coinEl.addEventListener('click', () => selectCoin(coin.id));
-                        memecoinListEl.appendChild(coinEl);
-
-                        if (coin.id === selectedCoinId) {
-                            updateChart(coin);
-                            updateSelectedCoinPrice(coin.currentPrice);
-                            modalCoinNameEl.textContent = `${coin.name} (${coin.symbol})`;
-                            // Mostrar/ocultar botón de Live y badge
-                            modalLiveBadgeEl.classList.toggle('hidden', !coin.isLive);
-                            viewLiveBtnEl.classList.toggle('hidden', !coin.isLive);
-                        }
-                    });
-                    
-                    updatePortfolioValues();
+                    updateMemecoinListUI();
                 });
             }
+
+            function updateMemecoinListUI() {
+                memecoinListEl.innerHTML = '';
+                
+                if (allCoinsCache.size === 0) {
+                    memecoinListEl.innerHTML = '<p class="text-gray-400">No hay monedas. ¡Lanza la primera!</p>';
+                    return;
+                }
+                
+                const filterText = coinFilterInputEl.value.toLowerCase();
+                let filteredCoins = Array.from(allCoinsCache.values()).filter(coin => 
+                    coin.name.toLowerCase().includes(filterText) || 
+                    coin.symbol.toLowerCase().includes(filterText)
+                );
+
+                filteredCoins.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+
+                filteredCoins.forEach(coin => {
+                    const priceChange = coin.priceHistory.length > 1 ? (coin.currentPrice - coin.priceHistory[coin.priceHistory.length - 2]) / coin.priceHistory[coin.priceHistory.length - 2] : 0;
+                    const changeColor = priceChange >= 0 ? 'text-green-500' : 'text-red-500';
+                    const changeIcon = priceChange >= 0 ? '▲' : '▼';
+                    const placeholderImg = `https://placehold.co/40x40/${coin.id.slice(0,6)}/FFFFFF?text=${coin.symbol}`;
+
+                    const coinEl = document.createElement('button');
+                    coinEl.className = `w-full text-left p-3 rounded-lg transition duration-200 ${selectedCoinId === coin.id ? 'bg-solana-purple/50' : 'bg-gray-800 hover:bg-gray-700'}`;
+                    coinEl.dataset.coinId = coin.id;
+                    coinEl.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <img src="${coin.imageUrl || placeholderImg}" onerror="this.src='${placeholderImg}'" alt="${coin.name}" class="w-10 h-10 rounded-full bg-gray-700">
+                                <div>
+                                    <span class="text-lg font-bold">${coin.name} (${coin.symbol})</span>
+                                    <span class="text-xs text-gray-400 block" title="${coin.creatorId}">Creador: ${allPlayersCache.get(coin.creatorId)?.username || '...' + coin.creatorId.slice(-6)}</span>
+                                </div>
+                                ${coin.isLive ? `<span class="animate-livePulse text-xs font-bold bg-red-600 text-white px-2 py-0.5 rounded-md ml-2">LIVE</span>` : ''}
+                                ${coin.xUrl ? `
+                                    <div class="x-popover-container ml-1">
+                                        <i class="ph ph-x text-gray-400 hover:text-x-blue cursor-pointer text-base"></i>
+                                        <div class="x-popover glassmorphism p-3 rounded-lg shadow-xl text-xs">
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <img src="${coin.imageUrl || placeholderImg}" alt="${coin.name}" class="w-8 h-8 rounded-full">
+                                                <div>
+                                                    <p class="font-bold text-white">${coin.name} <i class="ph ph-check-circle-fill text-x-blue text-xs align-middle"></i></p>
+                                                    <p class="text-gray-400">@${(coin.name || 'memecoin').replace(/\s/g, '_').slice(0,10)}_Official</p>
+                                                </div>
+                                            </div>
+                                            <p class="text-gray-300 mb-2">¡Sigue el hype en X!</p>
+                                            <div class="flex justify-between text-gray-400 mb-2">
+                                                <span><strong class="text-white">${formatNumber(coin.followers || 0)}</strong> Seguidores</span>
+                                            </div>
+                                            <a href="${coin.xUrl}" target="_blank" class="w-full inline-block bg-x-blue hover:bg-opacity-80 text-white font-bold py-1.5 px-2 rounded-md transition duration-200 text-center">Ver perfil en X</a>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="text-right">
+                                <span class="text-lg font-mono">${formatPrice(coin.currentPrice)}</span>
+                                <span class="text-sm font-semibold ${changeColor}">${changeIcon} ${formatNumber(priceChange * 100)}%</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Stats Principales --><div class="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-3 text-xs text-center">
+                            <div>
+                                <span class="text-gray-400 block">MC</span>
+                                <span class="font-semibold">${formatCurrency(coin.marketCap || 0)}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block">Liquidez</span>
+                                <span class="font-semibold">${formatCurrency(coin.sSolPool || 0)}</span>
+                            </div>
+                             <div>
+                                <span class="text-gray-400 block">Volumen</span>
+                                <span class="font-semibold">${formatCurrency(coin.volume || 0)}</span>
+                            </div>
+                             <div>
+                                <span class="text-gray-400 block">Holders</span>
+                                <span class="font-semibold">${formatNumber(coin.holderCount || 0)}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block">Seguidores</span>
+                                <span class="font-semibold">${formatNumber(coin.followers || 0)}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Stats Secundarias (Nuevas) --><div class="grid grid-cols-3 gap-2 mt-2 text-xs text-center pt-2 border-t border-gray-700/50">
+                            <div>
+                                <span class="text-gray-400 block">Bots Vol.</span>
+                                <span class="font-semibold">${formatNumber(coin.washTradeBudget || 0)} sSOL</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block">Precio Máx.</span>
+                                <span class="font-semibold text-green-400">${formatPrice(coin.allTimeHigh || 0)}</span>
+                            </div>
+                             <div>
+                                <span class="text-gray-400 block">Precio Mín.</span>
+                                <span class="font-semibold text-red-400">${formatPrice(coin.allTimeLow || 0)}</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-400">
+                            <span class="font-semibold text-gray-300">Comisiones Creador:</span> 
+                            <span>${formatNumber(coin.creatorFeesSsol || 0)} sSOL</span> | 
+                            <span>${formatNumber(coin.creatorFeesToken || 0)} ${coin.symbol}</span>
+                        </div>
+                    `;
+                    coinEl.addEventListener('click', () => selectCoin(coin.id));
+                    memecoinListEl.appendChild(coinEl);
+
+                    if (coin.id === selectedCoinId) {
+                        updateChart(coin);
+                        updateSelectedCoinPrice(coin.currentPrice);
+                        modalCoinNameEl.textContent = `${coin.name} (${coin.symbol})`;
+                        modalContractIdEl.textContent = `ID de Contrato: ...${coin.contractId.slice(-6)}`;
+                        modalLiveBadgeEl.classList.toggle('hidden', !coin.isLive);
+                        viewLiveBtnEl.classList.toggle('hidden', !coin.isLive);
+                    }
+                });
+                
+                updatePortfolioValues();
+            }
+
+            coinFilterInputEl.addEventListener('input', updateMemecoinListUI);
             
             function updatePortfolioValues() {
                 portfolioListEl.innerHTML = '';
@@ -775,8 +991,10 @@
                 
                 myPortfolioCache.forEach((coin, coinId) => {
                     const coinData = allCoinsCache.get(coinId);
-                    const coinName = coinData ? `${coinData.name} (${coinData.symbol})` : 'Moneda Desconocida';
-                    const currentValue = coinData ? coin.amount * coinData.currentPrice : 0;
+                    if (!coinData) return; // Si la moneda ya no existe en el mercado
+
+                    const coinName = `${coinData.name} (${coinData.symbol})`;
+                    const currentValue = coin.amount * coinData.currentPrice;
                     
                     const itemEl = document.createElement('div');
                     itemEl.className = 'flex justify-between items-center bg-gray-800 p-2 rounded';
@@ -840,6 +1058,32 @@
                                 backgroundColor: 'rgba(153, 69, 255, 0.4)', 
                                 type: 'bar', 
                                 yAxisID: 'yVolume', 
+                            },
+                            // Dataset para puntos de compra
+                            {
+                                label: 'Compra',
+                                data: [],
+                                backgroundColor: 'green',
+                                borderColor: 'green',
+                                pointRadius: 5,
+                                pointBackgroundColor: 'green',
+                                pointBorderColor: '#fff',
+                                pointHoverRadius: 7,
+                                type: 'bubble',
+                                yAxisID: 'yPrice',
+                            },
+                            // Dataset para puntos de venta
+                            {
+                                label: 'Venta',
+                                data: [],
+                                backgroundColor: 'red',
+                                borderColor: 'red',
+                                pointRadius: 5,
+                                pointBackgroundColor: 'red',
+                                pointBorderColor: '#fff',
+                                pointHoverRadius: 7,
+                                type: 'bubble',
+                                yAxisID: 'yPrice',
                             }
                         ]
                     },
@@ -865,7 +1109,7 @@
                             },
                             x: {
                                 ticks: { display: false },
-                                grid: { display: false }
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
                             }
                         },
                         plugins: {
@@ -881,6 +1125,12 @@
                                         }
                                         if (context.datasetIndex === 1) {
                                             return `Volumen: ${formatCurrency(context.parsed.y)}`;
+                                        }
+                                        if (context.datasetIndex === 2) {
+                                            return `COMPRA: ${formatPrice(context.parsed.y)}`;
+                                        }
+                                        if (context.datasetIndex === 3) {
+                                            return `VENTA: ${formatPrice(context.parsed.y)}`;
                                         }
                                         return '';
                                     }
@@ -900,6 +1150,25 @@
                 memecoinChart.data.labels = history.map((_, i) => i + 1);
                 memecoinChart.data.datasets[0].data = history; 
                 memecoinChart.data.datasets[1].data = volumeHistory; 
+
+                // Actualizar puntos de entrada/salida
+                const myWallet = myPortfolioCache.get(coinData.id);
+                const myTrades = (myWallet ? myWallet.tradeHistory || [] : []).filter(t => t.coinId === coinData.id).slice(-50); // Últimos 50 trades del jugador
+                
+                const buyPoints = [];
+                const sellPoints = [];
+                myTrades.forEach((trade, index) => {
+                    const priceIndex = history.findIndex(p => p === trade.price); // Buscar en la historia de precios
+                    if (priceIndex !== -1) {
+                         if (trade.type === 'buy') {
+                            buyPoints.push({ x: priceIndex + 1, y: trade.price }); // +1 porque labels son 1-index
+                        } else if (trade.type === 'sell') {
+                            sellPoints.push({ x: priceIndex + 1, y: trade.price });
+                        }
+                    }
+                });
+                memecoinChart.data.datasets[2].data = buyPoints;
+                memecoinChart.data.datasets[3].data = sellPoints;
                 
                 memecoinChart.update('none'); 
             }
@@ -917,11 +1186,11 @@
                 if (!coinData) return;
                 
                 modalCoinNameEl.textContent = `${coinData.name} (${coinData.symbol})`;
+                modalContractIdEl.textContent = `ID de Contrato: ...${coinData.contractId.slice(-6)}`; // Mostrar contractId
                 updateSelectedCoinPrice(coinData.currentPrice);
                 updateChart(coinData);
                 showModal(chartModalEl);
                 
-                // Mostrar/ocultar botón de Live y badge
                 modalLiveBadgeEl.classList.toggle('hidden', !coinData.isLive);
                 viewLiveBtnEl.classList.toggle('hidden', !coinData.isLive);
                 
@@ -937,6 +1206,7 @@
                 const name = coinNameEl.value.trim();
                 const symbol = coinSymbolEl.value.trim().toUpperCase();
                 const imageUrl = coinImageUrlEl.value.trim();
+                const xUrl = coinXUrlEl.value.trim(); // Nuevo campo
                 const initialSsol = parseFloat(coinInitialSsolEl.value);
                 const initialTokens = parseFloat(coinInitialTokensEl.value);
                 
@@ -974,6 +1244,8 @@
                             symbol: symbol,
                             creatorId: currentUserId,
                             imageUrl: imageUrl || `https://placehold.co/40x40/${newCoinRef.id.slice(0,6)}/FFFFFF?text=${symbol}`,
+                            xUrl: xUrl || '', // Guardar URL de X
+                            contractId: newCoinRef.id, // ID de contrato
                             sSolPool: initialSsol, 
                             tokenPool: initialTokens,
                             currentPrice: price,
@@ -990,16 +1262,16 @@
                             creatorFeesToken: 0, 
                             botSsolPool: 400, 
                             botTokenPool: 0,
-                            // Nuevas funciones
                             isLive: false,
                             liveViewers: 0,
-                            followers: 1,
+                            followers: (playerDoc.data().socialFollowers || 0) + 1, // Inicializar seguidores de moneda con los de la red social + 1
                             washTradeBudget: 0
                         });
 
                         const walletRef = doc(playersRef, currentUserId, 'wallet', newCoinRef.id);
                         transaction.set(walletRef, {
-                            amount: initialTokens
+                            amount: initialTokens,
+                            tradeHistory: [] // Inicializar historial de trades para la gráfica
                         });
                     });
                     
@@ -1021,7 +1293,7 @@
                     botSsolPool, botTokenPool, sSolPool, tokenPool, 
                     volume, priceHistory, volumeHistory, creatorId,
                     creatorFeesSsol, creatorFeesToken, marketCap, allTimeHigh, allTimeLow,
-                    followers
+                    followers, washTradeBudget 
                 } = coinData;
 
                 if (creatorId === 'bot') return {};
@@ -1031,12 +1303,9 @@
                     buyProbability = forceBuyProbability;
                 }
                 
-                // Los bots de Wash Trading intentan alternar
                 const isBuy = isWash ? (sSolPool < tokenPool) : (Math.random() < buyProbability);
 
                 let ssolTraded = 0;
-                let ssolFee = 0;
-                let tokenFee = 0;
                 let ssolForTrade = 0;
                 let tokensForTrade = 0;
                 let tokensReceived = 0;
@@ -1049,8 +1318,8 @@
                 let newFollowers = followers || 0;
 
                 if (isBuy) { // BOT COMPRA
-                    const ssolToSpend = isWash ? (coinData.washTradeBudget * 0.1) : (Math.pow(Math.random(), 2) * (botSsolPool * 0.1));
-                    if (ssolToSpend < 0.01 || botSsolPool < ssolToSpend) return {};
+                    const ssolToSpend = isWash ? (washTradeBudget * 0.1) : (Math.pow(Math.random(), 2) * (botSsolPool * 0.1));
+                    if (ssolToSpend < 0.00000001 || botSsolPool < ssolToSpend) return {};
                     
                     botSsolPool -= ssolToSpend;
                     ssolTraded = ssolToSpend; 
@@ -1068,17 +1337,17 @@
                     newCreatorFeesSsol += creatorFee;
                     
                     botTokenPool += tokensReceived;
-                    if (isWash) coinData.washTradeBudget -= ssolToSpend; // Reducir presupuesto si es wash
+                    if (isWash) washTradeBudget -= ssolToSpend; 
                     
                     tradeRef = { type: 'buy', coinSymbol: coinData.symbol, amountSsol: ssolToSpend, amountToken: tokensReceived, price: coinData.currentPrice, timestamp: serverTimestamp(), isWash: isWash };
-                    newFollowers++; // Nuevo seguidor en la primera compra
+                    newFollowers++; 
                     
                 } else { // BOT VENDE
                     const isRugpull = ((playerAction === 'sell' || playerAction === 'proactive') && Math.random() < 0.1);
                     const sellPercentage = isWash ? 0.1 : (isRugpull ? 0.5 : (Math.pow(Math.random(), 2) * 0.1));
                     
                     const tokensToSell = botTokenPool * sellPercentage;
-                    if (tokensToSell < 1) return {};
+                    if (tokensToSell < 0.00000001) return {};
 
                     botTokenPool -= tokensToSell;
                     
@@ -1096,7 +1365,7 @@
                     newCreatorFeesToken += creatorFee;
                     
                     botSsolPool += ssolReceived;
-                    if (isWash) coinData.washTradeBudget += ssolReceived; // Devolver al presupuesto si es wash
+                    if (isWash) washTradeBudget += ssolReceived; 
                     
                     tradeRef = { type: 'sell', coinSymbol: coinData.symbol, amountSsol: ssolReceived, amountToken: tokensToSell, price: coinData.currentPrice, timestamp: serverTimestamp(), isWash: isWash };
 
@@ -1109,8 +1378,8 @@
                 const newAllTimeHigh = Math.max(allTimeHigh || 0, newPrice);
                 const newAllTimeLow = Math.min(allTimeLow || 999999, newPrice); 
                 const newMarketCap = newPrice * (finalTokenPool + botTokenPool);
-                const newHistory = [...priceHistory, newPrice].slice(-50);
-                const newVolumeHistory = [...(volumeHistory || []), ssolTraded].slice(-50); 
+                const newHistory = [...priceHistory, newPrice].slice(-50); // Limitar a 50 puntos
+                const newVolumeHistory = [...(volumeHistory || []), ssolTraded].slice(-50); // Limitar a 50 puntos
                 const newVolume = volume + ssolTraded;
 
                 const updates = {
@@ -1131,7 +1400,7 @@
                 };
                 
                 if (isBuy) updates.followers = newFollowers;
-                if (isWash) updates.washTradeBudget = coinData.washTradeBudget;
+                updates.washTradeBudget = washTradeBudget;
                 
                 return updates;
             }
@@ -1139,7 +1408,7 @@
             // Bucle para Bots de "Wash Trading" (Volumen)
             async function washTradeBotLoop() {
                 if (allCoinsCache.size === 0) {
-                    setTimeout(washTradeBotLoop, 3000); // Reintentar
+                    setTimeout(washTradeBotLoop, 3000); 
                     return;
                 }
 
@@ -1147,11 +1416,10 @@
                 let batchHasWrites = false;
 
                 for (const [coinId, coin] of allCoinsCache.entries()) {
-                    if (coin.washTradeBudget && coin.washTradeBudget > 0.01) {
+                    if (coin.washTradeBudget && coin.washTradeBudget > 0.0001) { // Umbral mínimo para activar
                         const coinRef = doc(roomRef, coinId);
                         
-                        // Simular el trade
-                        const botUpdates = simulateBotTrade(coin, 'proactive', null, true); // true = isWash
+                        const botUpdates = simulateBotTrade(coin, 'proactive', null, true); 
                         
                         if (Object.keys(botUpdates).length > 0) {
                             if (botUpdates.tradeLog) {
@@ -1174,7 +1442,7 @@
                     }
                 }
 
-                setTimeout(washTradeBotLoop, 3000); // Cada 3 segundos
+                setTimeout(washTradeBotLoop, 3000); 
             }
 
 
@@ -1189,11 +1457,9 @@
                         let tradeProbability = 0.0; 
 
                         if (allTimeHigh > 0 && (currentPrice / allTimeHigh) < 0.2) {
-                            // Moneda muerta, baja probabilidad de trade, alta de venta
                             tradeProbability = 0.1; 
                             buyProbability = 0.05; 
                         } else {
-                            // --- LÓGICA DE HYPE (MEJORADA) ---
                             const priceHistory = coin.priceHistory || [];
                             let priceChange = 0;
                             if (priceHistory.length > 1) {
@@ -1208,21 +1474,16 @@
                             const volumeScore = Math.max(0, Math.min(1, volumeRatio / 10));
                             const holderScore = Math.max(0, Math.min(1, (coin.lastHolderCountChange || 0) / 5));
                             
-                            // *** NUEVA LÓGICA DE HYPE POR "LIVE" ***
-                            // El Hype por "Live" se basa en los espectadores. 1000 viewers = 1.0 score
                             const liveScore = coin.isLive ? Math.min(1.0, (coin.liveViewers || 0) / 1000) : 0.0;
-                            const followersScore = Math.max(0, Math.min(1, (coin.followers || 0) / 1000)); // 1000 seguidores = 1.0 score
+                            const followersScore = Math.max(0, Math.min(1, (coin.followers || 0) / 1000)); 
 
-                            // El Hype por "Live" ahora tiene doble peso
                             const totalHypeScore = (priceChangeScore + volumeScore + holderScore + followersScore + (liveScore * 2)) / 6;
                             
-                            tradeProbability = totalHypeScore * 0.5; // La prob. de tradear depende del hype
+                            tradeProbability = totalHypeScore * 0.5; 
 
                             if (priceChange > 0) {
-                                // Si el precio sube, el hype aumenta la prob. de compra
                                 buyProbability = 0.5 + (totalHypeScore * 0.4); 
                             } else {
-                                // Si el precio baja, el hype bajo aumenta la prob. de venta
                                 buyProbability = 0.5 - ((1 - totalHypeScore) * 0.4); 
                             }
                         }
@@ -1322,19 +1583,30 @@
                         let holderChange = 0;
                         let newFollowers = coinData.followers || 0;
                         const currentTokens = walletDoc.exists() ? walletDoc.data().amount : 0;
-                        if (currentTokens < 0.01) { 
+                        if (currentTokens < 0.00000001) { 
                             newHolderCount++;
                             holderChange = 1; 
-                            newFollowers++; // Nuevo seguidor (jugador real)
+                            newFollowers++; 
                         }
                         const newLastHolderCountChange = (coinData.lastHolderCountChange || 0) + holderChange;
                         
+                        // Agregar trade al historial del jugador
+                        const playerTradeHistory = walletDoc.exists() ? walletDoc.data().tradeHistory || [] : [];
+                        const updatedTradeHistory = [...playerTradeHistory, { 
+                            type: 'buy', 
+                            price: newPrice, 
+                            amountSsol: ssolToSpend,
+                            coinId: selectedCoinId,
+                            timestamp: serverTimestamp() 
+                        }].slice(-50); // Limitar a 50 trades en el historial
+
                         transaction.update(playerRef, {
                             sSOL_balance: playerData.sSOL_balance - ssolToSpend
                         });
                         
                         transaction.set(walletRef, {
-                            amount: currentTokens + tokensReceived
+                            amount: currentTokens + tokensReceived,
+                            tradeHistory: updatedTradeHistory
                         }, { merge: true });
                         
                         if (botUpdates.tradeLog) {
@@ -1347,7 +1619,7 @@
                         transaction.set(playerTradeRef, { type: 'buy', coinSymbol: coinData.symbol, amountSsol: ssolToSpend, amountToken: tokensReceived, price: coinData.currentPrice, timestamp: serverTimestamp(), isWash: false });
 
                         transaction.update(coinRef, {
-                            ...botUpdates, 
+                             ...botUpdates, 
                             sSolPool: finalSsolPool, 
                             tokenPool: newTokenPool,
                             currentPrice: newPrice,
@@ -1422,7 +1694,7 @@
                         const finalTokenPool = newTokenPool_k;
                         const ssolTraded = ssolReceived; 
 
-                        if (ssolReceived < 0.00001) {
+                        if (ssolReceived < 0.00000001) { // Umbral mínimo para evitar divisiones por cero
                             throw new Error("La liquidez es demasiado baja para esta venta.");
                         }
                         
@@ -1439,18 +1711,29 @@
                         let holderChange = 0;
                         const currentTokens = walletData.amount;
                         const newAmountInWallet = currentTokens - tokensToSell;
-                        if (newAmountInWallet < 0.01 && currentTokens >= 0.01) { 
+                        if (newAmountInWallet < 0.00000001 && currentTokens >= 0.00000001) { 
                             newHolderCount--;
                             holderChange = -1; 
                         }
                         const newLastHolderCountChange = (coinData.lastHolderCountChange || 0) + holderChange;
+
+                        // Agregar trade al historial del jugador
+                        const playerTradeHistory = walletDoc.exists() ? walletDoc.data().tradeHistory || [] : [];
+                        const updatedTradeHistory = [...playerTradeHistory, { 
+                            type: 'sell', 
+                            price: newPrice, 
+                            amountSsol: ssolReceived, 
+                            coinId: selectedCoinId,
+                            timestamp: serverTimestamp() 
+                        }].slice(-50);
                         
                         transaction.update(playerRef, {
                             sSOL_balance: playerData.sSOL_balance + ssolReceived
                         });
                         
                         transaction.set(walletRef, {
-                            amount: newAmountInWallet
+                            amount: newAmountInWallet,
+                            tradeHistory: updatedTradeHistory
                         }, { merge: true });
                         
                         if (botUpdates.tradeLog) {
@@ -1495,7 +1778,7 @@
                     const coin = myPortfolioCache.get(selectedCoinId);
                     if (coin) {
                         const amountToSell = coin.amount * percent;
-                        sellAmountEl.value = amountToSell.toFixed(2);
+                        sellAmountEl.value = amountToSell.toFixed(8); // Vender con más decimales
                     } else {
                         showMessage("No tienes esta moneda en tu portafolio.");
                         sellAmountEl.value = '0';
@@ -1503,7 +1786,7 @@
                 });
             });
             
-            // --- NUEVAS FUNCIONES: P2P, PANEL DE CREADOR, TIENDA ---
+            // --- NUEVAS FUNCIONES: P2P, PANEL DE CREADOR, TIENDA, SOCIALFI ---
             
             // Formulario de Enviar sSOL (P2P)
             sendSsolFormEl.addEventListener('submit', async (e) => {
@@ -1536,7 +1819,6 @@
                         
                         const receiverData = receiverDoc.data();
                         
-                        // Actualizar balances
                         transaction.update(senderRef, {
                             sSOL_balance: senderData.sSOL_balance - amountToSend
                         });
@@ -1545,7 +1827,7 @@
                         });
                     });
                     
-                    showMessage(`¡Enviaste ${formatNumber(amountToSend)} sSOL a ...${targetPlayerId.slice(-6)}!`);
+                    showMessage(`¡Enviaste ${formatNumber(amountToSend)} sSOL a ${allPlayersCache.get(targetPlayerId)?.username || '...' + targetPlayerId.slice(-6)}!`);
                     hideModal(sendSsolModalEl);
                     sendSsolFormEl.reset();
                     
@@ -1574,8 +1856,7 @@
                             </div>
                             
                             <div class="grid grid-cols-2 gap-3">
-                                <!-- Columna de Comisiones -->
-                                <div class="bg-gray-700/50 p-3 rounded-lg">
+                                <!-- Columna de Comisiones --><div class="bg-gray-700/50 p-3 rounded-lg">
                                     <h4 class="font-semibold mb-2">Comisiones Ganadas</h4>
                                     <div class="text-sm text-gray-300">
                                         sSOL: <span id="fee-ssol-${coinId}">${formatNumber(coin.creatorFeesSsol)}</span>
@@ -1588,8 +1869,7 @@
                                     </button>
                                 </div>
                                 
-                                <!-- Columna de Bots de Volumen -->
-                                <div class="bg-gray-700/50 p-3 rounded-lg">
+                                <!-- Columna de Bots de Volumen --><div class="bg-gray-700/50 p-3 rounded-lg">
                                     <h4 class="font-semibold mb-2">Bots de Volumen</h4>
                                     <div class="text-sm text-gray-300 mb-2">
                                         Presupuesto: ${formatNumber(coin.washTradeBudget || 0)} sSOL
@@ -1611,7 +1891,6 @@
                     creatorCoinsListEl.innerHTML = '<p class="text-gray-400 text-center">No has creado ninguna moneda.</p>';
                 }
                 
-                // Añadir listeners a los botones del panel
                 creatorCoinsListEl.querySelectorAll('.claim-fee-btn').forEach(btn => btn.addEventListener('click', (e) => claimFees(e.target.dataset.coinId, e.target)));
                 creatorCoinsListEl.querySelectorAll('.go-live-btn').forEach(btn => btn.addEventListener('click', (e) => toggleLive(e.target.dataset.coinId, e.target)));
                 creatorCoinsListEl.querySelectorAll('.wash-trade-form').forEach(form => form.addEventListener('submit', (e) => addWashTradeBudget(e, e.target.dataset.coinId)));
@@ -1622,7 +1901,7 @@
             // Lógica para Reclamar Comisiones
             async function claimFees(coinId, btn) {
                 const coin = allCoinsCache.get(coinId);
-                if (!coin || (coin.creatorFeesSsol < 0.0001 && coin.creatorFeesToken < 0.0001)) {
+                if (!coin || (coin.creatorFeesSsol < 0.00000001 && coin.creatorFeesToken < 0.00000001)) {
                     throw new Error("No hay comisiones que reclamar.");
                 }
                 
@@ -1648,7 +1927,7 @@
                         
                         const coinData = coinDoc.data();
                         const playerData = playerDoc.data();
-                        const walletData = walletDoc.exists() ? walletDoc.data() : { amount: 0 };
+                        const walletData = walletDoc.exists() ? walletDoc.data() : { amount: 0, tradeHistory: [] };
                         
                         if (coinData.creatorFeesSsol < ssolToClaim || coinData.creatorFeesToken < tokensToClaim) {
                              throw new Error("Conflicto de transacción, intenta de nuevo.");
@@ -1682,14 +1961,13 @@
                 try {
                     const coinRef = doc(roomRef, coinId);
                     
-                    // *** NUEVA LÓGICA: AÑADIR VIEWERS Y SEGUIDORES INICIALES ***
                     const initialViewers = newState ? 50 + Math.floor(Math.random() * 50) : 0;
                     const initialFollowers = newState ? (coin.followers || 0) + 5 + Math.floor(Math.random() * 10) : coin.followers;
 
                     await updateDoc(coinRef, {
                         isLive: newState,
                         liveViewers: initialViewers, 
-                        followers: initialFollowers // Actualizar también los seguidores
+                        followers: initialFollowers
                     });
                     
                     showMessage(newState ? "¡Estás en vivo!" : "Directo finalizado.");
@@ -1761,7 +2039,6 @@
                 liveViewersEl.textContent = formatNumber(coin.liveViewers || 0);
                 showModal(liveStreamModalEl);
                 
-                // Actualizar viewers (simulación)
                 const coinRef = doc(roomRef, selectedCoinId);
                 onSnapshot(coinRef, (doc) => {
                     if (doc.exists() && doc.data().isLive) {
@@ -1772,12 +2049,43 @@
                 });
             }
             
-            async function boostLiveStream() {
+            async function boostLiveStream(level) {
                 if (!selectedCoinId) return;
-                const boostCost = 0.1;
                 
-                boostLiveBtnEl.disabled = true;
-                boostLiveBtnEl.textContent = '...';
+                let boostCost = 0;
+                let viewerBonus = 0;
+                let followerBonus = 0;
+                let washTradeBonus = 0;
+
+                switch (level) {
+                    case 'small':
+                        boostCost = 0.1;
+                        viewerBonus = 100 + Math.floor(Math.random() * 100); // 100-200
+                        followerBonus = 10 + Math.floor(Math.random() * 20); // 10-30
+                        washTradeBonus = 5;
+                        break;
+                    case 'medium':
+                        boostCost = 1;
+                        viewerBonus = 500 + Math.floor(Math.random() * 500); // 500-1000
+                        followerBonus = 50 + Math.floor(Math.random() * 50); // 50-100
+                        washTradeBonus = 20;
+                        break;
+                    case 'large':
+                        boostCost = 10;
+                        viewerBonus = 2000 + Math.floor(Math.random() * 3000); // 2000-5000
+                        followerBonus = 200 + Math.floor(Math.random() * 300); // 200-500
+                        washTradeBonus = 100;
+                        break;
+                    default:
+                        showMessage("Nivel de boost inválido.");
+                        return;
+                }
+                
+                const currentBoostBtn = document.querySelector(`.boost-live-btn[data-boost-level="${level}"]`);
+                if (currentBoostBtn) {
+                    currentBoostBtn.disabled = true;
+                    currentBoostBtn.textContent = '...';
+                }
                 
                 try {
                     await runTransaction(db, async (transaction) => {
@@ -1794,25 +2102,28 @@
                         const playerData = playerDoc.data();
                         if (playerData.sSOL_balance < boostCost) throw new Error("sSOL insuficiente para el boost.");
                         
-                        // *** NUEVA LÓGICA: AÑADIR VIEWERS Y SEGUIDORES ***
-                        const newViewers = (coinDoc.data().liveViewers || 0) + 100 + Math.floor(Math.random() * 200);
-                        const newFollowers = (coinDoc.data().followers || 0) + 10 + Math.floor(Math.random() * 20); // Añadir 10-30 seguidores
+                        const newViewers = (coinDoc.data().liveViewers || 0) + viewerBonus;
+                        const newFollowers = (coinDoc.data().followers || 0) + followerBonus;
+                        const newWashTradeBudget = (coinDoc.data().washTradeBudget || 0) + washTradeBonus;
                         
                         transaction.update(playerRef, { sSOL_balance: playerData.sSOL_balance - boostCost });
                         transaction.update(coinRef, { 
                             liveViewers: newViewers,
-                            followers: newFollowers // Actualizar también los seguidores
+                            followers: newFollowers,
+                            washTradeBudget: newWashTradeBudget
                         });
                     });
                     
-                    showMessage("¡Boost aplicado! Más viewers y seguidores están entrando.");
+                    showMessage(`¡Boost aplicado (${level})! Más viewers, seguidores y bots de volumen están entrando.`);
                     
                 } catch (e) {
                     showMessage(e.message);
                 }
                 
-                boostLiveBtnEl.disabled = false;
-                boostLiveBtnEl.textContent = 'Pagar Boost (0.1 sSOL)';
+                if (currentBoostBtn) {
+                    currentBoostBtn.disabled = false;
+                    currentBoostBtn.textContent = `Boost (${boostCost} sSOL)`;
+                }
             }
             
             // Lógica de Tienda de Lujo
@@ -1836,7 +2147,6 @@
                             const newBalance = playerData.sSOL_balance - cost;
                             const currentItemCount = playerData.assets && playerData.assets[item] ? playerData.assets[item] : 0;
                             
-                            // Usar notación de puntos para actualizar un campo de mapa
                             transaction.update(playerRef, {
                                 sSOL_balance: newBalance,
                                 [`assets.${item}`]: currentItemCount + 1
@@ -1854,15 +2164,84 @@
                 });
             });
 
+            // Lógica para el perfil social del jugador
+            editSocialProfileFormEl.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = socialUsernameInputEl.value.trim();
+                const avatarUrl = socialAvatarInputEl.value.trim();
+
+                if (!username) {
+                    showMessage("El nombre de usuario no puede estar vacío.");
+                    return;
+                }
+
+                try {
+                    const playerRef = doc(playersRef, currentUserId);
+                    await updateDoc(playerRef, {
+                        username: username,
+                        avatarUrl: avatarUrl || 'https://via.placeholder.com/60/374151/FFFFFF?text=P'
+                    });
+                    showMessage("Perfil actualizado.");
+                    hideModal(editSocialProfileModalEl);
+                } catch (error) {
+                    console.error("Error al actualizar perfil social:", error);
+                    showMessage("Error al actualizar perfil.");
+                }
+            });
+
+            // Lógica para crear posts
+            createSocialPostFormEl.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const postText = socialPostTextEl.value.trim();
+
+                if (!postText) {
+                    showMessage("El post no puede estar vacío.");
+                    return;
+                }
+
+                try {
+                    const postRef = doc(collection(playersRef, currentUserId, 'social_posts'));
+                    await setDoc(postRef, {
+                        userId: currentUserId,
+                        text: postText,
+                        createdAt: serverTimestamp(),
+                        likes: 0,
+                        comments: 0
+                    });
+                    showMessage("Post publicado.");
+                    hideModal(createSocialPostModalEl);
+                    createSocialPostFormEl.reset();
+                } catch (error) {
+                    console.error("Error al publicar post:", error);
+                    showMessage("Error al publicar post.");
+                }
+            });
+
+            // Lógica para lanzar moneda desde SocialFi
+            launchSocialFiCoinBtn.addEventListener('click', () => {
+                const player = allPlayersCache.get(currentUserId);
+                if (player && (player.socialFollowers || 0) >= 50) {
+                    // Rellenar campos del modal de creación de moneda
+                    coinNameEl.value = `${player.username || 'Mi'} Coin`;
+                    coinSymbolEl.value = (player.username || 'ME').slice(0,5).toUpperCase();
+                    coinImageUrlEl.value = player.avatarUrl || '';
+                    // No pre-rellenamos sSOL/Tokens, eso sigue siendo decisión del usuario
+                    
+                    showModal(createCoinModalEl);
+                } else {
+                    showMessage("Necesitas al menos 50 seguidores en tu perfil social para lanzar una moneda SocialFi.");
+                }
+            });
+
 
             // --- INICIAR EL JUEGO ---
             initAuth();
             initChart();
             
             setTimeout(proactiveBotLoop, 5000); 
-            setTimeout(washTradeBotLoop, 3000); // Iniciar el bucle de bots de volumen
+            setTimeout(washTradeBotLoop, 3000); 
             
-            showMessage("¡Bienvenido! Nuevas funciones: Live, Boost, Bots de Volumen y Tienda de Lujo.");
+            showMessage("¡Bienvenido! Nuevas funciones: Red Social, perfiles, boosts mejorados y más.");
         
         } // --- FIN: ENVOLTORIO MAIN ASYNC ---
 
