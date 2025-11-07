@@ -692,21 +692,23 @@
         // --- INICIO: ENVOLTORIO MAIN ASYNC ---
         async function main() {
 
-            // --- CONFIGURACIÓN DE FIREBASE (TU PROYECTO) ---
-            // Variable 'appId' usada para las rutas de Firestore. Actualizada para coincidir con tu projectId.
-            const appId = 'flappydhc'; // <-- Actualizado con tu projectId
+            // --- CONFIGURACIÓN DE FIREBASE ---
+            // ID de la app (basado en el projectId)
+            const appId = 'meme-59775';
 
-            // Tu configuración de Firebase proporcionada
+            // Your web app's Firebase configuration
+            // For Firebase JS SDK v7.20.0 and later, measurementId is optional
             const firebaseConfig = {
-              apiKey: "AIzaSyD7xL7BlUeP6Q0fezyxfLBYlaGcMxFk90Y",
-              authDomain: "flappydhc.firebaseapp.com",
-              projectId: "flappydhc",
-              storageBucket: "flappydhc.firebasestorage.app",
-              messagingSenderId: "875606051184",
-              appId: "1:875606051184:web:20f519ec2efe9bc51c67b5",
-              measurementId: "G-6TQF87KQGR"
+              apiKey: "AIzaSyBT-5vk-IxaOIF_QeIrxnyq4qk9_cwdydU",
+              authDomain: "meme-59775.firebaseapp.com",
+              projectId: "meme-59775",
+              storageBucket: "meme-59775.firebasestorage.app",
+              messagingSenderId: "36406553582",
+              appId: "1:36406553582:web:ad77e2a6672b4a98917cff",
+              measurementId: "G-2PFYP6VCB9"
             };
 
+            // Initialize Firebase
             const app = initializeApp(firebaseConfig);
             const analytics = getAnalytics(app);
             // --- FIN DE LA CONFIGURACIÓN ---
@@ -2226,7 +2228,7 @@
                             marketCap: newMarketCap, holderCount: newHolderCount,
                             lastHolderCountChange: newLastHolderCountChange,
                             creatorFeesToken: newCreatorFeesToken,
-                            allTimeHigh: newAllTimeHigh, allTimeLow: newAllTimeLow // <-- CORREGIDO: Era newAllDimeLow
+                            allTimeHigh: newAllTimeHigh, allTimeLow: newAllDTimeLow
                         });
                     });
 
@@ -2816,4 +2818,3 @@
     </script>
 </body>
 </html>
-
