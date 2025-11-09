@@ -3,43 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Eliminada</title>
-    <!-- Carga de Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Dashboard de Solana (SOL)</title>
+    <!-- Carga de Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Fuente Inter */
-        body {
-            font-family: 'Inter', sans-serif;
+        /* Asegura que el contenedor del widget ocupe el espacio asignado */
+        .tradingview-widget-container {
+            width: 100%;
+            height: 100%;
         }
-        /* Asegurarnos de que @tailwind se procese si usamos CSS personalizado,
-           pero para este caso simple, con solo el CDN basta. */
     </style>
 </head>
-<body class="bg-gray-900 text-white h-screen flex items-center justify-center p-4">
-    
-    <div class="bg-gray-800 border border-gray-700 shadow-2xl rounded-xl max-w-lg w-full p-8 md:p-12 text-center">
+<body class="bg-gray-800 text-gray-200 font-sans antialiased"> <!-- Fondo gris oscuro, texto claro -->
+
+    <div class="container mx-auto p-4 md:p-8">
         
-        <!-- Icono de advertencia (SVG en línea) -->
-        <svg class="w-16 h-16 text-red-500 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-        </svg>
-
-        <!-- Título principal -->
-        <h1 class="text-3xl md:text-4xl font-extrabold text-red-400 mb-3">
-            Web Eliminada
-        </h1>
-
-        <!-- Razón de la eliminación -->
-        <p class="text-lg md:text-xl text-gray-300">
-            <strong>Razón:</strong> Abuso y vulneración de la base de Datos.
-        </p>
-
-        <!-- Pie de página de la notificación -->
-        <div class="border-t border-gray-700 mt-8 pt-6">
-            <p class="text-sm text-gray-500">
-                Este sitio ha sido deshabilitado permanentemente.
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-teal-400 mb-2"> <!-- Teal claro -->
+                Dashboard de Solana (SOL) en Tiempo Real
+            </h1>
+            <p class="text-lg text-gray-300"> <!-- Texto gris claro -->
+                Gráfico, Libro de Órdenes y Datos de SOL.
             </p>
+        </header>
+
+        <!-- Contenedor para el widget de TradingView (Gráfico Principal) -->
+        <div class="h-[70vh] w-full max-w-7xl mx-auto bg-gray-900 rounded-lg shadow-2xl overflow-hidden"> <!-- h-[70vh], bg-gray-900 -->
+            <!-- TradingView Widget BEGIN --><div class="tradingview-widget-container" style="height:100%;width:100%">
+              <div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+              {
+                "autosize": true,
+                "symbol": "COINBASE:SOLUSD",
+                "interval": "D",
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "es",
+                "enable_publishing": false,
+                "allow_symbol_change": true,
+                "container_id": "tradingview_chart"
+              }
+              </script>
+            </div>
+            <!-- TradingView Widget END --></div>
+
+        <!-- Widgets en columnas --><div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 max-w-7xl mx-auto"> <!-- Revertido a 2 columnas -->
+            
+            <!-- Widget de Información del Símbolo (Datos de Mercado/Movimientos) -->
+            <div class="bg-gray-900 p-4 rounded-lg shadow-xl"> <!-- bg-gray-900 -->
+                <h2 class="text-xl font-semibold text-gray-200 mb-4 text-center"> <!-- Texto claro -->
+                    Datos del Mercado (Bid/Ask)
+                </h2>
+                <!-- TradingView Symbol Info Widget BEGIN --><div class="tradingview-widget-container" style="height: 180px;"> <!-- 180px height -->
+                  <div class="tradingview-widget-container__widget" style="height:100%"></div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+                  {
+                    "symbol": "COINBASE:SOLUSD",
+                    "width": "100%",
+                    "locale": "es",
+                    "colorTheme": "dark",
+                    "isTransparent": true
+                  }
+                  </script>
+                </div>
+                <!-- TradingView Symbol Info Widget END --></div>
+
+            <!-- Libro de Órdenes (Widget de Binance) - AÑADIDO -->
+            <div class="bg-gray-900 p-4 rounded-lg shadow-xl">
+                <h2 class="text-xl font-semibold text-gray-200 mb-4 text-center">
+                    Libro de Órdenes (Binance: SOLUSDT)
+                </h2>
+                <!-- TradingView Market Depth Widget BEGIN -->
+                <div class="tradingview-widget-container" style="height: 400px;">
+                  <div class="tradingview-widget-container__widget" style="height:100%"></div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-depth.js" async>
+                  {
+                    "symbol": "BINANCE:SOLUSDT",
+                    "width": "100%",
+                    "height": "400px",
+                    "market": "BINANCE",
+                    "showVolume": true,
+                    "showChart": false,
+                    "locale": "es",
+                    "colorTheme": "dark",
+                    "isTransparent": true
+                  }
+                  </script>
+                </div>
+                <!-- TradingView Market Depth Widget END -->
+            </div>
+            
         </div>
+
+        <!-- Sección para el Ticker de Transacciones --><div class="mt-8 max-w-7xl mx-auto bg-gray-900 p-4 rounded-lg shadow-xl"> <!-- bg-gray-900 -->
+            <h2 class="text-xl font-semibold text-gray-200 mb-4 text-center"> <!-- Texto claro -->
+                Flujo de Transacciones Recientes (Ticker)
+            </h2>
+            <!-- TradingView Ticker Tape Widget BEGIN --><div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+              {
+                "symbols": [
+                  {
+                    "proName": "COINBASE:SOLUSD",
+                    "title": "Solana / Dólar (Coinbase)"
+                  },
+                  {
+                    "proName": "BINANCE:SOLUSDT",
+                    "title": "Solana / Tether (Binance)"
+                  },
+                  {
+                    "proName": "KRAKEN:SOLUSD",
+                    "title": "Solana / Dólar (Kraken)"
+                  }
+                ],
+                "showSymbolLogo": true,
+                "colorTheme": "dark",
+                "isTransparent": true,
+                "displayMode": "adaptive",
+                "locale": "es"
+              }
+              </script>
+            </div>
+            <!-- TradingView Ticker Tape Widget END --></div>
+
+        <footer class="text-center mt-6 text-gray-400 text-sm"> <!-- Texto gris-400 -->
+            <p>Datos y gráficos proporcionados por <a href="https://es.tradingview.com/" target="_blank" rel="noopener noreferrer" class="text-teal-500 hover:underline">TradingView</a>.</p>
+        </footer>
     </div>
 
 </body>
